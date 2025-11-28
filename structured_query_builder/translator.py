@@ -295,12 +295,35 @@ class SQLTranslator:
 
     def _translate_condition_group(self, group: ConditionGroup) -> str:
         """Translate a group of conditions."""
-        cond_strs = [self._translate_simple_condition(cond) for cond in group.conditions]
+        cond_strs = [self._translate_condition(cond) for cond in group.conditions]
         combined = f" {group.logic.value} ".join(cond_strs)
         return f"({combined})" if len(cond_strs) > 1 else combined
 
-    def _translate_simple_condition(self, cond: SimpleCondition) -> str:
-        """Translate a single condition."""
+    def _translate_condition(self, cond) -> str:
+        """Translate a condition (dispatches to specific type handler based on cond_type)."""
+        # Use discriminator field to determine type
+        cond_type = getattr(cond, 'cond_type', None)
+
+        if cond_type == 'simple':
+            return self._translate_simple_condition(cond)
+        elif cond_type == 'column_comparison':
+            return self._translate_column_comparison(cond)
+        elif cond_type == 'between':
+            return self._translate_between_condition(cond)
+        else:
+            # Fallback for backward compatibility (old tests might not have cond_type)
+            from .clauses import SimpleCondition, ColumnComparison, BetweenCondition
+            if isinstance(cond, SimpleCondition):
+                return self._translate_simple_condition(cond)
+            elif isinstance(cond, ColumnComparison):
+                return self._translate_column_comparison(cond)
+            elif isinstance(cond, BetweenCondition):
+                return self._translate_between_condition(cond)
+            else:
+                raise ValueError(f"Unknown condition type: {type(cond)}")
+
+    def _translate_simple_condition(self, cond) -> str:
+        """Translate a single condition (column OP value)."""
         col = self._translate_qualified_column(cond.column)
         op = cond.operator.value
 
@@ -319,6 +342,20 @@ class SQLTranslator:
         # Regular comparison
         value = self._format_value(cond.value)
         return f"{col} {op} {value}"
+
+    def _translate_column_comparison(self, cond) -> str:
+        """Translate column-to-column comparison (left_column OP right_column)."""
+        left_col = self._translate_qualified_column(cond.left_column)
+        right_col = self._translate_qualified_column(cond.right_column)
+        op = cond.operator.value
+        return f"{left_col} {op} {right_col}"
+
+    def _translate_between_condition(self, cond) -> str:
+        """Translate BETWEEN condition (column BETWEEN low AND high)."""
+        col = self._translate_qualified_column(cond.column)
+        low = self._format_value(cond.low)
+        high = self._format_value(cond.high)
+        return f"{col} BETWEEN {low} AND {high}"
 
     def _translate_subquery_condition(self, subq_cond: SubqueryCondition) -> str:
         """Translate condition with scalar subquery."""
@@ -395,22 +432,22 @@ class SQLTranslator:
         return "\n".join(parts)
 
     def _translate_join(self, join: JoinSpec) -> str:
-        """Translate JOIN specification."""
+        """Translate JOIN specification with flexible ON conditions."""
         join_type = join.join_type.value
         table = join.table.value
         if join.table_alias:
             table = f"{table} AS {join.table_alias}"
 
-        # Join condition
-        left_col = join.left_column.value
-        if join.left_table_alias:
-            left_col = f"{join.left_table_alias}.{left_col}"
+        # Translate ON conditions using ConditionGroup
+        on_parts = [self._translate_condition_group(cg) for cg in join.on_conditions]
 
-        right_col = join.right_column.value
-        if join.table_alias:
-            right_col = f"{join.table_alias}.{right_col}"
+        # If multiple condition groups, combine with AND
+        if len(on_parts) == 1:
+            on_clause = on_parts[0]
+        else:
+            on_clause = " AND ".join(f"({part})" for part in on_parts)
 
-        return f"{join_type} JOIN {table} ON {left_col} = {right_col}"
+        return f"{join_type} JOIN {table} ON {on_clause}"
 
     def _translate_derived_table(self, derived: DerivedTable) -> str:
         """Translate derived table (subquery in FROM)."""

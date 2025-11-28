@@ -34,11 +34,27 @@ class SimpleCondition(BaseModel):
     Examples: price > 100, vendor = 'amazon', category IN ('electronics', 'books')
     """
 
+    cond_type: Literal["simple"] = "simple"
     column: QualifiedColumn = Field(..., description="Column to compare")
     operator: ComparisonOp = Field(..., description="Comparison operator")
     value: Union[str, int, float, bool, list[str], list[int], list[float]] = Field(
         ..., description="Value(s) to compare against; list for IN/NOT IN"
     )
+
+
+class ColumnComparison(BaseModel):
+    """
+    Column-to-column comparison condition.
+
+    Maps to: left_column OP right_column
+    Examples: my_table.price = other_table.price, a.id = b.source_id
+    Essential for JOIN ON clauses and cross-table comparisons.
+    """
+
+    cond_type: Literal["column_comparison"] = "column_comparison"
+    left_column: QualifiedColumn = Field(..., description="Left column to compare")
+    operator: ComparisonOp = Field(..., description="Comparison operator")
+    right_column: QualifiedColumn = Field(..., description="Right column to compare")
 
 
 class BetweenCondition(BaseModel):
@@ -48,9 +64,14 @@ class BetweenCondition(BaseModel):
     Maps to: column BETWEEN low AND high
     """
 
+    cond_type: Literal["between"] = "between"
     column: QualifiedColumn = Field(..., description="Column to check")
     low: Union[str, int, float] = Field(..., description="Lower bound (inclusive)")
     high: Union[str, int, float] = Field(..., description="Upper bound (inclusive)")
+
+
+# Union type for all condition types
+Condition = Union[SimpleCondition, ColumnComparison, BetweenCondition]
 
 
 class ConditionGroup(BaseModel):
@@ -58,9 +79,10 @@ class ConditionGroup(BaseModel):
     Group of conditions combined with AND/OR.
 
     Represents: (cond1 LOGIC cond2 LOGIC ...)
+    Supports: SimpleCondition, ColumnComparison, and BetweenCondition
     """
 
-    conditions: list[SimpleCondition] = Field(
+    conditions: list[Condition] = Field(
         ..., description="Conditions to combine", min_length=1
     )
     logic: LogicOp = Field(..., description="Logical operator combining conditions")
@@ -147,19 +169,20 @@ class JoinSpec(BaseModel):
     """
     JOIN specification.
 
-    Maps to: JOIN_TYPE table [alias] ON left_col = right_col
+    Maps to: JOIN_TYPE table [alias] ON conditions
+    Supports both simple column equality and complex conditions.
     """
 
     join_type: JoinType = Field(..., description="Type of join")
     table: Table = Field(..., description="Table to join")
     table_alias: Optional[str] = Field(None, description="Alias for joined table")
 
-    # Join condition
-    left_column: Column = Field(..., description="Column from left side")
-    left_table_alias: Optional[str] = Field(
-        None, description="Table alias for left column (for multi-join queries)"
+    # Join conditions - flexible pattern using ConditionGroup
+    on_conditions: list[ConditionGroup] = Field(
+        ...,
+        description="Conditions for JOIN ON clause; supports ColumnComparison, SimpleCondition, etc.",
+        min_length=1
     )
-    right_column: Column = Field(..., description="Column from right side (joined table)")
 
 
 class DerivedTable(BaseModel):

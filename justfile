@@ -18,6 +18,7 @@ test:
     @echo "================================"
     @. .venv/bin/activate && python -m pytest structured_query_builder/tests/test_models.py -v
     @. .venv/bin/activate && python -m pytest structured_query_builder/tests/test_translator.py -v
+    @. .venv/bin/activate && python -m pytest structured_query_builder/tests/test_column_comparison.py -v
     @echo "\n✅ All unit tests passed"
 
 # Run hypothesis property-based tests
@@ -50,7 +51,7 @@ validate: test test-hypothesis examples schema-metrics
     @echo "✅ COMPLETE VALIDATION PASSED"
     @echo "========================================"
     @echo "Results:"
-    @echo "  - Unit tests: 60 tests ✅"
+    @echo "  - Unit tests: 64 tests (31 models + 22 translator + 11 column comparison) ✅"
     @echo "  - Hypothesis: 320+ random queries ✅"
     @echo "  - Examples: 6 pricing queries ✅"
     @echo "  - Schema: Compatible with Vertex AI ✅"
@@ -103,7 +104,7 @@ help:
     @echo "Structured Query Builder - Justfile Commands"
     @echo ""
     @echo "Testing:"
-    @echo "  just test              - Run unit tests (53 tests)"
+    @echo "  just test              - Run unit tests (64 tests)"
     @echo "  just test-hypothesis   - Run property-based tests (320+ random queries)"
     @echo "  just examples          - Run example queries"
     @echo "  just smoke             - Quick smoke test"

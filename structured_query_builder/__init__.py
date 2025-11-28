@@ -33,7 +33,9 @@ from .expressions import (
 
 from .clauses import (
     SimpleCondition,
+    ColumnComparison,
     BetweenCondition,
+    Condition,
     ConditionGroup,
     WhereL0,
     WhereL1,
@@ -76,7 +78,9 @@ __all__ = [
     "SelectExpr",
     # Clauses
     "SimpleCondition",
+    "ColumnComparison",
     "BetweenCondition",
+    "Condition",
     "ConditionGroup",
     "WhereL0",
     "WhereL1",
