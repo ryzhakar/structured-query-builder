@@ -12,6 +12,7 @@ class Table(str, Enum):
     """Database tables available for querying."""
 
     product_offers = "product_offers"
+    exact_matches = "exact_matches"  # NEW: Exact product matches (source_id, target_id)
     id_mapping = "id_mapping"
     categories = "categories"
     vendors = "vendors"
@@ -30,7 +31,12 @@ class Column(str, Enum):
     regular_price = "regular_price"
     markdown_price = "markdown_price"
     is_markdown = "is_markdown"
+    availability = "availability"  # In stock / out of stock boolean
     created_at = "created_at"
+
+    # exact_matches columns (lexicographically sorted, no A:B + B:A duplicates by ETL convention)
+    source_id = "source_id"  # Lexicographically smaller offer ID
+    target_id = "target_id"  # Lexicographically larger offer ID
 
     # id_mapping columns
     product_match_id = "product_match_id"
