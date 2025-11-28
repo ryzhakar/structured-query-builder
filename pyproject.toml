@@ -1,0 +1,13 @@
+[project]
+name = "structured-query-builder"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "google-cloud-aiplatform>=1.128.0",
+    "langchain>=1.1.0",
+    "langchain-google-vertexai>=3.1.0",
+    "pydantic>=2.12.5",
+    "pytest>=9.0.1",
+    "python-dotenv>=1.2.1",
+]
