@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
     "google-cloud-aiplatform>=1.128.0",
+    "hypothesis>=6.148.3",
     "langchain>=1.1.0",
     "langchain-google-vertexai>=3.1.0",
     "pydantic>=2.12.5",
