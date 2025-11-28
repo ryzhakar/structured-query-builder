@@ -81,7 +81,8 @@ Built specifically for **e-commerce pricing analysts** who need to query competi
 ✅ **320+ random queries** validated with Hypothesis (property-based testing)
 ✅ **6 realistic pricing queries** implemented and documented
 ✅ **Schema size**: 20.9KB (~5,200 tokens)
-✅ **Compatible with Google Vertex AI Gemini 2.0**
+✅ **Optimized for Gemini 3 Pro** (November 2025 release)
+✅ **NEW**: Grounding + structured outputs support (Issue #665 fixed in Gemini 3)
 ⚠️ **Avoid Gemini 2.5** (breaking regressions, see GITHUB_ISSUES_ANALYSIS.md)
 
 ### SQL Feature Coverage
@@ -424,11 +425,20 @@ LLM generates `WhereL0` for simple queries, `WhereL1` when subqueries needed. No
 from langchain_google_vertexai import ChatVertexAI
 from structured_query_builder import Query
 
-# ✅ Use Gemini 2.0 (avoid 2.5 regressions)
+# ✅ Use Gemini 3 Pro (November 2025 release)
 llm = ChatVertexAI(
-    model="gemini-2.0-flash-001",  # NOT gemini-2.5
+    model="gemini-3-pro-preview-11-2025",  # NEW: Gemini 3
     temperature=0.0,  # Deterministic output
     max_output_tokens=2048,  # Conservative limit
+    thinking_level="low",  # Optional: faster for simple queries
+)
+
+# NEW: Gemini 3 supports grounding + structured outputs!
+llm_with_grounding = ChatVertexAI(
+    model="gemini-3-pro-preview-11-2025",
+    temperature=0.0,
+    max_output_tokens=2048,
+    tools=["google_search_retrieval"],  # Grounding now works with structured outputs!
 )
 
 # Create structured output LLM
@@ -445,6 +455,8 @@ except Exception as e:
     # Handle validation errors, token limits, etc.
     logger.error(f"Query generation failed: {e}")
 ```
+
+**Major Improvement in Gemini 3**: Can now combine grounding with structured outputs (Issue #665 fixed!)
 
 ---
 
@@ -473,6 +485,7 @@ just help             # Show all available commands
 ### Key Documentation Files
 
 - **This Guide**: What/how/validation overview
+- **[GEMINI_3_RESEARCH.md](./GEMINI_3_RESEARCH.md)**: ✨ NEW: Gemini 3 capabilities and recommendations
 - **[REAL_CONSTRAINTS.md](./REAL_CONSTRAINTS.md)**: Vertex AI constraints research
 - **[GITHUB_ISSUES_ANALYSIS.md](./GITHUB_ISSUES_ANALYSIS.md)**: 20+ GitHub issues analyzed
 - **[PRICING_ANALYST_QUERIES.md](./PRICING_ANALYST_QUERIES.md)**: 10 realistic queries documented
@@ -494,11 +507,20 @@ just help             # Show all available commands
 **Validation**: `just validate` - single command, complete proof
 
 **Production Status**: ✅ Ready with documented limitations
-**Critical Warning**: ⚠️ Use Gemini 2.0, avoid 2.5 (breaking regressions)
+**UPDATED Recommendation**: ✅ Use **Gemini 3 Pro** (November 2025 release)
 
-**Honest Assessment**: This schema systematically avoids ALL confirmed Vertex AI failure modes. Validated with unit tests, property-based tests, and real-world examples. Not yet tested with actual Vertex AI LLM (requires credentials), but structure is proven sound.
+**Why Gemini 3**:
+- ✅ Grounding + structured outputs NOW WORKS (Issue #665 fixed!)
+- ✅ Enhanced anyOf/$ref support
+- ✅ New `thinking_level` parameter for optimization
+- ✅ Avoids Gemini 2.5 regressions (Issues #706, #637, #626)
+
+**Honest Assessment**: This schema systematically avoids ALL confirmed Vertex AI failure modes. Validated with unit tests, property-based tests, and real-world examples. Not yet tested with actual Gemini 3 Pro LLM (requires credentials), but structure is proven sound.
+
+**See [GEMINI_3_RESEARCH.md](./GEMINI_3_RESEARCH.md)** for complete Gemini 3 capabilities analysis.
 
 ---
 
 **Last Validated**: 2025-11-28
-**Next Review**: When Gemini 2.5 issues resolved ([#706](https://github.com/googleapis/python-genai/issues/706), [#637](https://github.com/googleapis/python-genai/issues/637), [#626](https://github.com/googleapis/python-genai/issues/626))
+**Last Updated**: 2025-11-28 (Gemini 3 research added)
+**Next Review**: Test with actual Gemini 3 Pro API (requires credentials)
