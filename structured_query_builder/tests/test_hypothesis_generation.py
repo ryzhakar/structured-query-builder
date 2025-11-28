@@ -305,13 +305,23 @@ def from_clause_strategy(draw, allow_joins=True):
             left_table_alias = table_alias if table_alias and draw(st.booleans()) else None
             right_column = draw(column_strategy())
 
+            # Create on_conditions using ColumnComparison
             joins.append(JoinSpec(
                 join_type=join_type,
                 table=join_table,
                 table_alias=join_alias,
-                left_column=left_column,
-                left_table_alias=left_table_alias,
-                right_column=right_column
+                on_conditions=[
+                    ConditionGroup(
+                        conditions=[
+                            ColumnComparison(
+                                left_column=QualifiedColumn(column=left_column, table_alias=left_table_alias),
+                                operator=ComparisonOp.eq,
+                                right_column=QualifiedColumn(column=right_column, table_alias=join_alias)
+                            )
+                        ],
+                        logic=LogicOp.and_
+                    )
+                ]
             ))
 
     return FromClause(
