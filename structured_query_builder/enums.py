@@ -51,6 +51,10 @@ class Column(str, Enum):
     vendor_total = "vendor_total"
     commoditization_coefficient = "commoditization_coefficient"
     brand_share_percent = "brand_share_percent"
+    previous_price = "previous_price"
+    price_change_pct = "price_change_pct"
+    previous_availability = "previous_availability"
+    availability_changes = "availability_changes"
 
 
 class ArithmeticOp(str, Enum):
