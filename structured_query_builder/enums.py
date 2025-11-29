@@ -45,6 +45,12 @@ class Column(str, Enum):
     # Generic/computed columns
     discount_amount = "discount_amount"
     discount_percent = "discount_percent"
+    total_our_products = "total_our_products"
+    matched_products = "matched_products"
+    product_count = "product_count"
+    vendor_total = "vendor_total"
+    commoditization_coefficient = "commoditization_coefficient"
+    brand_share_percent = "brand_share_percent"
 
 
 class ArithmeticOp(str, Enum):

@@ -38,64 +38,82 @@ def query_24_commoditization_coefficient():
     Action Trigger:
         If coefficient > 0.8 → We're a commodity, need exclusive brands
         If coefficient < 0.3 → We're differentiated, can command premium
+
+    Implementation:
+        Uses derived table with GROUP BY to calculate counts, then arithmetic for ratio.
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
-            # Total products we carry
-            AggregateExpr(
-                function=AggregateFunc.count,
-                column=Column.id,
-                table_alias="my",
-                alias="total_our_products"
-            ),
-            # Products that have matches
-            AggregateExpr(
-                function=AggregateFunc.count,
-                column=Column.source_id,
-                table_alias="em",
-                alias="matched_products"
+            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="agg")),
+            ColumnExpr(source=QualifiedColumn(column=Column.total_our_products, table_alias="agg")),
+            ColumnExpr(source=QualifiedColumn(column=Column.matched_products, table_alias="agg")),
+            # Calculate ratio: matched / total
+            BinaryArithmetic(
+                left_column=Column.matched_products,
+                left_table_alias="agg",
+                operator=ArithmeticOp.divide,
+                right_column=Column.total_our_products,
+                right_table_alias="agg",
+                alias="commoditization_coefficient"
             ),
         ],
         from_=FromClause(
-            table=Table.product_offers,
-            table_alias="my",
-            joins=[
-                JoinSpec(
-                    join_type=JoinType.left,  # LEFT JOIN to include unmatched
-                    table=Table.exact_matches,
-                    table_alias="em",
-                    on_conditions=[
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+                    AggregateExpr(
+                        function=AggregateFunc.count,
+                        column=Column.id,
+                        table_alias="my",
+                        alias="total_our_products"
+                    ),
+                    AggregateExpr(
+                        function=AggregateFunc.count,
+                        column=Column.source_id,
+                        table_alias="em",
+                        alias="matched_products"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                table_alias="my",
+                joins=[
+                    JoinSpec(
+                        join_type=JoinType.left,
+                        table=Table.exact_matches,
+                        table_alias="em",
+                        on_conditions=[
+                            ConditionGroup(
+                                conditions=[
+                                    ColumnComparison(
+                                        left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                        operator=ComparisonOp.eq,
+                                        right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                    )
+                                ],
+                                logic=LogicOp.and_
+                            )
+                        ]
+                    ),
+                ],
+                where=WhereL0(
+                    groups=[
                         ConditionGroup(
                             conditions=[
-                                ColumnComparison(
-                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                SimpleCondition(
+                                    column=QualifiedColumn(column=Column.vendor, table_alias="my"),
                                     operator=ComparisonOp.eq,
-                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
-                                )
+                                    value="Us"
+                                ),
                             ],
                             logic=LogicOp.and_
                         )
-                    ]
-                ),
-            ]
-        ),
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
-                    conditions=[
-                        SimpleCondition(
-                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
-                            operator=ComparisonOp.eq,
-                            value="Us"
-                        ),
                     ],
-                    logic=LogicOp.and_
-                )
-            ],
-            group_logic=LogicOp.and_
+                    group_logic=LogicOp.and_
+                ),
+                group_by=GroupByClause(columns=[Column.category]),
+                alias="agg"
+            )
         ),
-        group_by=GroupByClause(columns=[Column.category]),
         order_by=OrderByClause(
             items=[
                 OrderByItem(column=Column.category, direction=Direction.asc),
@@ -120,25 +138,56 @@ def query_25_brand_weighting_fingerprint():
 
     Pattern:
         Calculate share-of-shelf % per brand for each vendor.
+        Uses derived table for counts, then window function for vendor totals.
 
     Action Trigger:
         If competitor's brand weight > our weight + 20% → Negotiate better vendor terms
         If we dominate a brand → Position as authorized dealer
+
+    Implementation:
+        1. Inner query: GROUP BY brand, vendor to get counts
+        2. Outer query: Window SUM to get vendor totals
+        3. Arithmetic: (brand_count * 100 / vendor_total) for percentage
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.brand)),
-            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
-            AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="product_count"
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="counts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor, table_alias="counts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.product_count, table_alias="counts")),
+            # Window function to get vendor total
+            WindowExpr(
+                function=WindowFunc.sum,
+                column=Column.product_count,
+                partition_by=[Column.vendor],
+                order_by=[],
+                alias="vendor_total"
             ),
-            # Calculate percentage requires application layer math
-            # This query returns counts, percentage = count/total in app
+            # Calculate percentage: (brand_count * 100) / vendor_total
+            CompoundArithmetic(
+                inner_left_column=Column.product_count,
+                inner_operator=ArithmeticOp.multiply,
+                inner_right_value=100.0,
+                outer_operator=ArithmeticOp.divide,
+                outer_column=Column.vendor_total,
+                alias="brand_share_percent"
+            ),
         ],
-        from_=FromClause(table=Table.product_offers),
-        group_by=GroupByClause(columns=[Column.brand, Column.vendor]),
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+                    AggregateExpr(
+                        function=AggregateFunc.count,
+                        column=None,
+                        alias="product_count"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                group_by=GroupByClause(columns=[Column.brand, Column.vendor]),
+                alias="counts"
+            )
+        ),
         order_by=OrderByClause(
             items=[
                 OrderByItem(column=Column.vendor, direction=Direction.asc),

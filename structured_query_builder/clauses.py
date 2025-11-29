@@ -189,14 +189,20 @@ class DerivedTable(BaseModel):
     """
     Derived table (subquery in FROM clause).
 
-    Maps to: (SELECT ... FROM table WHERE ...) AS alias
-    Used for patterns like filtering after window functions.
+    Maps to: (SELECT ... FROM table [JOIN ...] WHERE ... GROUP BY ...) AS alias
+    Used for patterns like:
+    - Filtering after window functions
+    - Calculating ratios on aggregates
+    - Multi-step aggregations
     Contains WhereL0 to prevent recursive nesting.
     """
 
     select: list[SelectExpr] = Field(..., description="Columns to select")
     from_table: Table = Field(..., description="Source table")
+    table_alias: Optional[str] = Field(None, description="Alias for source table in derived query")
+    joins: list["JoinSpec"] = Field(default_factory=list, description="Joins within derived table")
     where: Optional[WhereL0] = Field(None, description="Filter conditions")
+    group_by: Optional["GroupByClause"] = Field(None, description="GROUP BY clause")
     alias: str = Field(..., description="Required alias for derived table")
 
 
