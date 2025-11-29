@@ -149,10 +149,16 @@ def aggregate_expr_strategy(draw):
 
     distinct = draw(st.booleans())
 
+    # Percentile functions require percentile parameter
+    percentile = None
+    if function in (AggregateFunc.percentile_cont, AggregateFunc.percentile_disc):
+        percentile = draw(st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False))
+
     return AggregateExpr(
         function=function,
         column=column,
         distinct=distinct,
+        percentile=percentile,
         alias=alias
     )
 
