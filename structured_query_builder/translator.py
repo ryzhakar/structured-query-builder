@@ -188,7 +188,11 @@ class SQLTranslator:
             else:
                 raise ValueError(f"{func} requires a column argument")
         else:
-            arg = expr.column.value
+            # Handle table alias if present
+            if expr.table_alias:
+                arg = f"{expr.table_alias}.{expr.column.value}"
+            else:
+                arg = expr.column.value
             if expr.distinct:
                 arg = f"DISTINCT {arg}"
 
