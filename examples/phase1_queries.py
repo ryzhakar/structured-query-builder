@@ -728,7 +728,7 @@ def query_21_promo_erosion_index():
 
 def query_22_brand_presence_tracking():
     """
-    UNMATCHED: Track competitor brand assortment size over time.
+    UNMATCHED: Track competitor brand assortment size changes week-over-week.
 
     Intelligence Model Mapping:
         Archetype: HISTORIAN
@@ -745,32 +745,54 @@ def query_22_brand_presence_tracking():
         If brand_count increases significantly → Competitor secured better terms
 
     Pattern:
-        Run weekly, track count changes to detect assortment churn.
+        1. Aggregate offer counts by brand and week
+        2. Use LAG to get previous week's count
+        3. Calculate percentage change week-over-week
+        4. Detect significant changes (drops or increases)
+
+    Status: GOOD (upgraded from PARTIAL with LAG temporal pattern)
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.brand)),
-            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
-            AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="offer_count"
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="weekly")),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor, table_alias="weekly")),
+            ColumnExpr(source=QualifiedColumn(column=Column.updated_at, table_alias="weekly"), alias="week"),
+            ColumnExpr(source=QualifiedColumn(column=Column.offer_count, table_alias="weekly"), alias="current_count"),
+            # LAG to get previous week's offer count
+            WindowExpr(
+                function=WindowFunc.lag,
+                column=Column.offer_count,
+                table_alias="weekly",
+                partition_by=[Column.brand, Column.vendor],
+                order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                offset=1,
+                alias="previous_count"
             ),
-            AggregateExpr(
-                function=AggregateFunc.sum,
-                column=Column.availability,
-                alias="in_stock_count"
-            ),
-            AggregateExpr(
-                function=AggregateFunc.avg,
-                column=Column.markdown_price,
-                alias="avg_price"
+            # Calculate change percentage: (prev - curr) / prev
+            CompoundArithmetic(
+                inner_left_column=Column.previous_count,
+                inner_operator=ArithmeticOp.subtract,
+                inner_right_column=Column.offer_count,
+                inner_right_table_alias="weekly",
+                outer_operator=ArithmeticOp.divide,
+                outer_column=Column.previous_count,
+                alias="count_change_pct"
             ),
         ],
-        from_=FromClause(table=Table.product_offers),
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.updated_at)),
+                    AggregateExpr(
+                        function=AggregateFunc.count,
+                        column=None,
+                        alias="offer_count"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                where=WhereL0(
                     conditions=[
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.vendor),
@@ -779,14 +801,15 @@ def query_22_brand_presence_tracking():
                         ),
                     ],
                     logic=LogicOp.and_
-                )
-            ],
-            group_logic=LogicOp.and_
+                ),
+                group_by=GroupByClause(columns=[Column.brand, Column.vendor, Column.updated_at]),
+                alias="weekly"
+            )
         ),
-        group_by=GroupByClause(columns=[Column.brand, Column.vendor]),
         order_by=OrderByClause(
             items=[
                 OrderByItem(column=Column.brand, direction=Direction.asc),
+                OrderByItem(column=Column.updated_at, direction=Direction.desc),
             ]
         ),
     )

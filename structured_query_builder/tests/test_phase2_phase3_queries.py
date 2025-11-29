@@ -97,7 +97,7 @@ class TestPhase3Queries:
         assert "LIMIT 100" in sql
 
     def test_query_28_safe_haven_scanner(self):
-        """Test Q28: Safe Haven Scanner (Matched)."""
+        """Test Q28: Safe Haven Scanner with temporal STDDEV (Matched)."""
         from examples.phase3_queries import query_28_safe_haven_scanner
 
         query = query_28_safe_haven_scanner()
@@ -106,45 +106,40 @@ class TestPhase3Queries:
         # Verify matched execution
         assert "INNER JOIN exact_matches" in sql
 
-        # Verify multi-table aggregates for gap analysis
-        assert "AVG(my.markdown_price)" in sql
-        assert "AVG(comp.markdown_price)" in sql
+        # Verify price gap calculation
+        assert "price_gap" in sql
+        assert "(comp.markdown_price - my.markdown_price)" in sql
 
-        # Verify volatility metric (price stability)
-        assert "STDDEV(comp.markdown_price)" in sql
-
-        # Verify product counting
-        assert "COUNT(*)" in sql
-
-        # Verify grouping by category and brand
-        assert "GROUP BY category, brand" in sql
+        # Verify temporal window STDDEV for price volatility
+        assert "STDDEV(comp.markdown_price) OVER" in sql
+        assert "PARTITION BY id" in sql
+        assert "ORDER BY updated_at" in sql
+        assert "price_volatility_52w" in sql
 
     def test_query_29_inventory_velocity_detector(self):
-        """Test Q29: Inventory Velocity Detector (Matched)."""
+        """Test Q29: Inventory Velocity Detector with LAG state tracking."""
         from examples.phase3_queries import query_29_inventory_velocity_detector
 
         query = query_29_inventory_velocity_detector()
         sql = translate_query(query)
 
-        # Verify matched execution
-        assert "INNER JOIN exact_matches" in sql
-        assert "INNER JOIN product_offers AS comp" in sql
+        # Verify LAG for previous availability state
+        assert "LAG(comp.availability)" in sql
+        assert "PARTITION BY id" in sql
+        assert "ORDER BY updated_at" in sql
 
-        # Verify availability tracking columns
-        assert "my.availability" in sql
-        assert "comp.availability" in sql
+        # Verify toggle count window function
+        assert "COUNT(comp.id) OVER" in sql
+        assert "toggle_count" in sql
 
-        # Verify competitive pricing context
-        assert "comp.markdown_price" in sql
+        # Verify previous_availability column
+        assert "previous_availability" in sql
 
-        # Verify vendor filter
-        assert "vendor = 'Us'" in sql
+        # Verify filtering for high-velocity products
+        assert "toggle_count > 3" in sql
 
-        # Verify ordering by category and brand
-        assert "ORDER BY category ASC, brand ASC" in sql
-
-        # Verify limit for top velocity products
-        assert "LIMIT 200" in sql
+        # Verify ordering by toggle count (descending)
+        assert "ORDER BY toggle_count DESC" in sql
 
 
 class TestPhase2Phase3Serialization:
@@ -223,13 +218,14 @@ class TestArchitectCoverageCompletion:
             phase2_queries.query_24_commoditization_coefficient,  # LEFT JOIN for coefficient
             phase3_queries.query_27_vendor_fairness_audit,
             phase3_queries.query_28_safe_haven_scanner,
-            phase3_queries.query_29_inventory_velocity_detector,
+            # Q29 now uses unmatched pattern with temporal LAG for velocity detection
         ]
 
         # Unmatched queries (no exact_matches table)
         unmatched_queries = [
             phase2_queries.query_25_brand_weighting_fingerprint,
             phase2_queries.query_26_price_ladder_void_scanner,
+            phase3_queries.query_29_inventory_velocity_detector,  # Enhanced with LAG, no longer matched
         ]
 
         # Verify matched queries use exact_matches
@@ -279,16 +275,19 @@ class TestProcurementIntelligencePatterns:
         assert "regular_price" in sql
         assert "comp.regular_price < my.regular_price" in sql
 
-        # Q28: Uses markdown_price for gap analysis
+        # Q28: Uses markdown_price for temporal volatility and gap analysis
         query = phase3_queries.query_28_safe_haven_scanner()
         sql = translate_query(query)
-        assert "AVG(my.markdown_price)" in sql
-        assert "AVG(comp.markdown_price)" in sql
+        assert "my.markdown_price" in sql
+        assert "comp.markdown_price" in sql
+        assert "price_gap" in sql
+        assert "price_volatility_52w" in sql  # Temporal STDDEV window function
 
-        # Q29: Uses availability as velocity proxy
+        # Q29: Uses availability as velocity proxy with LAG
         query = phase3_queries.query_29_inventory_velocity_detector()
         sql = translate_query(query)
         assert "availability" in sql
+        assert "previous_availability" in sql  # LAG-based state tracking
 
 
 if __name__ == "__main__":

@@ -283,17 +283,20 @@ class TestPhase1Queries:
         assert "vendor = 'Them'" in sql
 
     def test_query_22_brand_presence(self):
-        """Test Q22: Brand Presence Tracking (Unmatched)."""
+        """Test Q22: Brand Presence Tracking with LAG (Unmatched)."""
         from examples.phase1_queries import query_22_brand_presence_tracking
 
         query = query_22_brand_presence_tracking()
         sql = translate_query(query)
 
-        # Verify brand tracking metrics
+        # Verify temporal tracking with LAG
         assert "COUNT(*)" in sql
-        assert "SUM(availability)" in sql
-        assert "AVG(markdown_price)" in sql
-        assert "GROUP BY brand, vendor" in sql
+        assert "LAG(weekly.offer_count)" in sql
+        assert "PARTITION BY brand, vendor" in sql
+        assert "GROUP BY brand, vendor, updated_at" in sql
+        # Verify week-over-week change calculation
+        assert "previous_count" in sql
+        assert "count_change_pct" in sql
 
     def test_query_23_discount_depth(self):
         """Test Q23: Discount Depth Distribution (Unmatched)."""
