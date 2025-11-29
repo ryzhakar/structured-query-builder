@@ -1,0 +1,228 @@
+task:
+  title: "Pydantic Schema Design for LLM-Powered SQL Query Builder"
+  type: implementation
+  priority: high
+
+domain:
+  industry: enterprise_e_commerce
+  user_persona: pricing_analyst
+  use_case: |
+    Pricing analysts interface with a natural language query system. They describe
+    their analytical needs (often vaguely), and an agent interprets, builds a query,
+    executes it, extracts insights, and returns a bundle containing results, insights,
+    and the query that was run.
+
+database:
+  primary_engine: clickhouse
+  secondary_engine: postgresql
+  access_mode: read_only
+  operations_allowed:
+    - SELECT
+  operations_forbidden:
+    - INSERT
+    - UPDATE
+    - DELETE
+    - DDL
+
+schema:
+  representation: enums
+  rationale: "Few tables and columns; enums are explicit and self-explanatory"
+  
+  tables:
+    product_offers:
+      description: "Main analytical table containing historical pricing data"
+      refresh_cadence: weekly
+      scale: millions_of_rows
+      columns:
+        - name: id
+          type: identifier
+        - name: vendor
+          type: categorical
+        - name: category
+          type: categorical
+        - name: brand
+          type: categorical
+        - name: title
+          type: text
+        - name: description
+          type: text
+        - name: regular_price
+          type: numeric
+        - name: markdown_price
+          type: numeric
+        - name: is_markdown
+          type: boolean
+        - name: created_at
+          type: timestamp
+      notes: |
+        Contains both the client business's own data and competitor data.
+        Historical nature means time-series analysis is a core use case.
+
+    id_mapping:
+      description: "Exact matching table linking offers across vendors to same real-world product"
+      purpose: cross_vendor_product_matching
+
+    reference_tables:
+      description: "Lookup tables mapping IDs to full values (e.g., category names)"
+      purpose: denormalization_support
+
+output:
+  format: pydantic_model
+  purpose: proto_query
+  downstream: |
+    The Pydantic model represents a "proto-query" that will be translated
+    into actual SQL. The translation vector must be clear and unambiguous.
+
+sql_features:
+  required:
+    joins:
+      types:
+        - INNER
+        - LEFT
+      notes: "Avoid FULL, CROSS, and exotic joins. Performance matters at scale."
+    
+    aggregations:
+      group_by: required
+      having: to_be_determined
+      extensions:
+        - ROLLUP (discretionary)
+        - CUBE (discretionary)
+        - GROUPING_SETS (discretionary)
+    
+    subqueries:
+      enabled: true
+      max_nesting_depth: 2
+      locations:
+        - WHERE_clause
+        - FROM_clause_as_derived_table
+      notes: "Simpler is better. No self-reference. Explicit depth limits."
+    
+    computed_columns:
+      enabled: true
+      examples:
+        - "price * quantity AS total"
+        - "regular_price - markdown_price AS discount"
+    
+    boolean_logic:
+      enabled: true
+      nesting: limited
+      notes: |
+        No infinite recursion. Explicit models for nested variants.
+        Define specific depth limits.
+
+  discretionary:
+    window_functions:
+      status: evaluate_need
+      candidates:
+        - RANK
+        - DENSE_RANK
+        - ROW_NUMBER
+        - LAG
+        - LEAD
+      notes: "Pricing analysis often needs ranking and time-series comparisons"
+    
+    case_expressions:
+      status: evaluate_need
+      notes: "May be needed for conditional categorization"
+    
+    set_operations:
+      status: likely_unnecessary
+      candidates:
+        - UNION
+        - INTERSECT
+        - EXCEPT
+
+  excluded:
+    ctes:
+      reason: |
+        CTEs solve same problems as subqueries. Rule: when two approaches
+        achieve the same thing, pick the simpler one and make it exclusive.
+    
+    recursive_queries:
+      reason: "No hierarchical data patterns identified"
+    
+    full_join:
+      reason: "Not needed for use case"
+    
+    cross_join:
+      reason: "Performance risk at scale"
+
+design_principles:
+  - name: single_path
+    description: |
+      When multiple SQL constructs achieve the same result, choose ONE.
+      Prefer the most conventional, self-explanatory approach.
+  
+  - name: impact_over_power
+    description: |
+      Match SQL's computational impact (what results can be obtained),
+      not its full expressive power (all ways to obtain them).
+  
+  - name: explicit_depth
+    description: |
+      No infinite recursion or self-reference in types. Define explicit
+      models for each nesting level to control depth.
+  
+  - name: correctness_by_construction
+    description: |
+      Proto-queries must be correct by schema design. No separate
+      validation step. The Pydantic model guides toward valid SQL.
+  
+  - name: 90_percent_rule
+    description: |
+      If simpler constructs cover 90% of use cases, prefer them.
+      Complexity is a cost.
+
+constraints:
+  llm_integration:
+    structured_outputs: required
+    provider_agnostic: true
+    starting_provider: google_gemini
+    recursive_types: forbidden
+    rationale: |
+      Provider lock-in is a business risk. Cost optimization matters.
+      Some providers don't support recursive types in structured outputs.
+  
+  performance:
+    concern: query_execution_time
+    data_scale: millions_of_rows
+    mitigation: "Avoid expensive operations; limit join complexity"
+  
+  security:
+    injection_risk: low
+    rationale: "Read-only queries limit attack surface"
+
+architecture_considerations:
+  single_vs_multiple_schemas:
+    preference: single_complex_schema
+    alternative: |
+      Multiple schemas routed by query complexity. If we know upfront
+      a query is simple, use a simpler schema with tighter guarantees.
+    status: open_question
+
+reference_material:
+  blogpost:
+    author: Ryan Klapper
+    title: "Turning Words into SQL: Leveraging Streamlit and OpenAI's Structured Output"
+    date: 2024-08-09
+    relevance: |
+      Approach is sound (Pydantic + structured outputs), but the specific
+      schema is too restrictive. Needs more flexibility and power for
+      real analytical workloads.
+    
+    limitations_identified:
+      - Single table only
+      - No joins
+      - No subqueries
+      - No computed expressions
+      - Flat boolean conditions
+      - Limited aggregation options
+
+deliverable:
+  type: pydantic_model_design
+  requirements:
+    - Cover all required SQL features
+    - Explicit, non-recursive type definitions
+    - Provider-agnostic structured output compatibility
+    - Clear translation path to SQL
+    - Self-documenting via enums and type annotations

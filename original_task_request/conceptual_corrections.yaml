@@ -1,0 +1,180 @@
+corrections:
+  tiered_schema_decision:
+    issue: "Advocated for tiered schemas without acknowledging this diverges from stated preference"
+    original_spec: "preference: single_complex_schema, alternative: tiered, status: open_question"
+    brainstorming_position: "Strongly recommended tiered approach with routing"
+    correction: |
+      Explicitly acknowledge the trade-off. If tiered is chosen, justify why the preference
+      was overridden. Consider hybrid: single schema with optional complexity flags rather
+      than entirely separate schema types.
+
+  correctness_by_construction:
+    issue: "Introduced translation-time validation despite spec requiring correctness by schema alone"
+    original_spec: "Proto-queries must be correct by schema design. No separate validation step."
+    brainstorming_position: "Validate at translation time"
+    correction: |
+      Tighten schema constraints to eliminate need for translation-time validation.
+      Use Literal types, constrained lists, and field interdependencies to make
+      invalid SQL unrepresentable. Translation should be mechanical, not defensive.
+
+  rollup_cube_dismissal:
+    issue: "Dismissed ROLLUP/CUBE without adequate domain analysis"
+    original_spec: "discretionary - evaluate need"
+    brainstorming_position: "Recommend excluding initially"
+    correction: |
+      ROLLUP is genuinely useful for pricing analysts doing hierarchical aggregations
+      (e.g., totals by category, then by brand within category, then grand total).
+      Either include with simple model or provide stronger justification for exclusion.
+
+additions:
+  id_mapping_table_patterns:
+    gap: "Core domain table mentioned but not integrated into join patterns"
+    priority: high
+    addition: |
+      Add explicit join patterns for cross-vendor product matching:
+      
+      class MatchedProductJoin(BaseModel):
+          """Join through id_mapping for same-product comparisons"""
+          left_vendor_filter: str
+          right_vendor_filter: str
+          match_table: Literal["id_mapping"] = "id_mapping"
+      
+      Show SQL pattern:
+        FROM product_offers ours
+        JOIN id_mapping im ON ours.id = im.left_offer_id
+        JOIN product_offers theirs ON im.right_offer_id = theirs.id
+        WHERE ours.vendor = ? AND theirs.vendor = ?
+
+  reference_table_enrichment:
+    gap: "Reference tables defined but lookup pattern not shown"
+    priority: medium
+    addition: |
+      Add enrichment join pattern for human-readable output:
+      
+      class EnrichmentJoin(BaseModel):
+          """Join to reference table for readable names"""
+          reference_table: Literal["categories", "vendors", "brands"]
+          foreign_key: Column
+          select_columns: list[str]  # e.g., ["full_name", "parent_category"]
+      
+      Common pattern: always enrich category_id → category_name in final output.
+
+  clickhouse_dialect:
+    gap: "Primary database dialect not addressed"
+    priority: high
+    addition: |
+      ClickHouse-specific considerations for schema and translation:
+      
+      functions_to_add:
+        - quantile(0.5)(price)  # median
+        - uniqExact(product_id)  # distinct count
+        - toStartOfWeek(created_at)  # time bucketing
+        - arrayJoin for array expansion
+      
+      join_constraints:
+        - Prefer LEFT JOIN over INNER (ClickHouse optimization)
+        - Consider adding join_strictness: Literal["ALL", "ANY", "ASOF"]
+        - Flag expensive patterns (multiple joins, large right tables)
+      
+      null_handling:
+        - ClickHouse uses 0/empty string defaults, not NULL
+        - May need assumeNotNull() or ifNull() in translation
+
+  time_series_patterns:
+    gap: "Historical analysis understated despite being core use case"
+    priority: high
+    addition: |
+      Add first-class time filtering and bucketing:
+      
+      class TimeFilter(BaseModel):
+          column: Literal["created_at"] = "created_at"
+          preset: Optional[Literal[
+              "last_7_days", "last_4_weeks", "last_quarter",
+              "same_period_last_year", "wtd", "mtd", "ytd"
+          ]] = None
+          custom_start: Optional[date] = None
+          custom_end: Optional[date] = None
+      
+      class TimeBucket(BaseModel):
+          column: Literal["created_at"] = "created_at"
+          granularity: Literal["day", "week", "month", "quarter"]
+          alias: str = "period"
+      
+      These translate to toStartOfWeek(), toStartOfMonth(), etc.
+
+  date_comparison_patterns:
+    gap: "Week-over-week mentioned but no schema support for period comparisons"
+    priority: medium
+    addition: |
+      Pattern for "compare this week vs last week":
+      
+      class PeriodComparison(BaseModel):
+          metric: AggregateExpr
+          group_by: list[Column]
+          current_period: TimeFilter
+          comparison_period: TimeFilter
+          
+      Translates to self-join or window with date offset.
+
+  performance_guardrails:
+    gap: "Scale concerns noted but no schema-level mitigation"
+    priority: medium
+    addition: |
+      Embed guardrails in schema:
+      
+      class FromClause(BaseModel):
+          # ... existing fields ...
+          joins: list[JoinSpec] = Field(default=[], max_length=3)
+      
+      class Query(BaseModel):
+          # ... existing fields ...
+          require_filter: bool = True  # Force WHERE clause presence
+      
+      Translation layer can warn on:
+        - No time filter on product_offers (full table scan)
+        - Join without filter on smaller table
+        - SELECT * equivalent (all columns)
+
+  postgres_routing:
+    gap: "Secondary database mentioned but no routing logic"
+    priority: low
+    addition: |
+      Add database target hint:
+      
+      class Query(BaseModel):
+          # ... existing fields ...
+          target_engine: Literal["clickhouse", "postgres"] = "clickhouse"
+      
+      Routing rules:
+        - Reference-only queries → postgres
+        - Aggregations on product_offers → clickhouse
+        - Mixed (enrichment joins) → clickhouse with reference cache
+
+  qualified_column_in_arithmetic:
+    gap: "Arithmetic expressions use Column but joins require QualifiedColumn"
+    priority: high
+    addition: |
+      BinaryArithmetic and CompoundArithmetic should use QualifiedColumn
+      to support computed columns in joined queries:
+      
+      # Current (broken for joins):
+      left_column: Optional[Column] = None
+      
+      # Should be:
+      left_column: Optional[QualifiedColumn] = None
+      
+      Enables: ours.regular_price - theirs.regular_price AS price_diff
+
+  aggregate_over_computed:
+    gap: "Cannot aggregate over computed expressions"
+    priority: medium
+    addition: |
+      Pattern: AVG(regular_price - markdown_price) AS avg_discount
+      
+      Current AggregateExpr only takes Column, not arithmetic.
+      
+      Options:
+        1. Add computed_column: Optional[BinaryArithmetic] to AggregateExpr
+        2. Use derived table (compute first, aggregate outer)
+        
+      Option 2 aligns with existing architecture; option 1 is more direct.
