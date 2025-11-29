@@ -355,6 +355,100 @@ def query_19_loss_leader_hunter():
     )
 
 
+def query_06_cluster_floor_check():
+    """
+    UNMATCHED: Identify products priced below market 10th percentile.
+
+    Intelligence Model Mapping:
+        Archetype: PREDATOR
+        Concern: Headroom Discovery
+        Variant: Unmatched Approximation
+        Query Name: "The Cluster Floor Check"
+
+    Business Value:
+        Detects outlier low pricing that warrants investigation.
+        "Why are we selling a toaster for $12 when their cheapest toaster is $19?"
+
+    Action Trigger:
+        If my_price < 10th_percentile → Investigate cost structure or raise price
+
+    Requires:
+        PERCENTILE_CONT function (newly implemented)
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my"), alias="my_price"),
+            # Use scalar subquery to get 10th percentile for comparison
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+        ),
+        where=WhereL1(
+            subquery_conditions=[
+                SubqueryCondition(
+                    column=QualifiedColumn(column=Column.markdown_price, table_alias="my"),
+                    operator=ComparisonOp.lt,
+                    subquery=ScalarSubquery(
+                        table=Table.product_offers,
+                        aggregate=AggregateExpr(
+                            function=AggregateFunc.percentile_cont,
+                            column=Column.markdown_price,
+                            percentile=0.1,  # 10th percentile
+                            alias="p10_price"
+                        ),
+                        where=WhereL0(
+                            groups=[
+                                ConditionGroup(
+                                    conditions=[
+                                        # Match category for fair comparison
+                                        ColumnComparison(
+                                            left_column=QualifiedColumn(column=Column.category),
+                                            operator=ComparisonOp.eq,
+                                            right_column=QualifiedColumn(column=Column.category, table_alias="my")
+                                        ),
+                                        SimpleCondition(
+                                            column=QualifiedColumn(column=Column.vendor),
+                                            operator=ComparisonOp.ne,
+                                            value="Us"
+                                        ),
+                                    ],
+                                    logic=LogicOp.and_
+                                )
+                            ],
+                            group_logic=LogicOp.and_
+                        ),
+                        group_by=[Column.category]
+                    )
+                )
+            ],
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+                OrderByItem(column=Column.markdown_price, direction=Direction.asc),
+            ]
+        ),
+        limit=LimitClause(limit=100)
+    )
+
+
 # =============================================================================
 # ARCHETYPE 3: HISTORIAN - Trend Analysis (3 new queries)
 # =============================================================================
@@ -636,6 +730,70 @@ def query_23_discount_depth_distribution():
     )
 
 
+def query_14_global_floor_stress_test():
+    """
+    UNMATCHED: Identify minimum competitor prices by brand+category for sourcing decisions.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Concern: Cost Model Validation
+        Variant: Unmatched Approximation
+        Query Name: "The Global Floor Stress Test"
+
+    Business Value:
+        "The cheapest Samsung TV in the market is $300. My cheapest cost is $350.
+        I am sourcing the wrong models. I need to ask Samsung for their 'fighter' SKUs."
+
+    Action Trigger:
+        If MIN(competitor_price) < my_entry_cost → Investigate sourcing for lower-tier models
+
+    Note:
+        Shows market floor prices for vendor negotiation context.
+        Air-gapped from actual cost data (ERP) per design constraints.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            AggregateExpr(
+                function=AggregateFunc.min,
+                column=Column.markdown_price,
+                alias="market_floor_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="competitor_offer_count"
+            ),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.ne,
+                            value="Us"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.brand, Column.category]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.brand, direction=Direction.asc),
+                OrderByItem(column=Column.category, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
 # =============================================================================
 # Main execution
 # =============================================================================
@@ -648,7 +806,8 @@ if __name__ == "__main__":
         # ENFORCER (2 queries)
         ("Q16: MAP Violations (Unmatched)", query_16_map_violations_unmatched),
         ("Q17: Premium Gap Analysis (Matched)", query_17_premium_gap_analysis),
-        # PREDATOR (2 queries)
+        # PREDATOR (3 queries)
+        ("Q06: Cluster Floor Check (Unmatched)", query_06_cluster_floor_check),
         ("Q18: Supply Chain Failure Detector (Unmatched)", query_18_supply_chain_failure_detector),
         ("Q19: Loss-Leader Hunter (Matched)", query_19_loss_leader_hunter),
         # HISTORIAN (3 queries)
@@ -657,6 +816,8 @@ if __name__ == "__main__":
         ("Q22: Brand Presence Tracking (Unmatched)", query_22_brand_presence_tracking),
         # MERCENARY (1 query)
         ("Q23: Discount Depth Distribution (Unmatched)", query_23_discount_depth_distribution),
+        # ARCHITECT (1 query)
+        ("Q14: Global Floor Stress Test (Unmatched)", query_14_global_floor_stress_test),
     ]
 
     for name, query_func in queries:
