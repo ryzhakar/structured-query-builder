@@ -1,0 +1,201 @@
+pricing_analyst_intelligence_model:
+  meta:
+    status: "Comparative Data Specification"
+    comparison_mode: "Parallel Execution"
+    context: "3rd-Party Competitive SaaS (Air-Gapped from Cost/Sales)"
+
+  # ============================================================================
+  # 1.0 THE DATA MODEL SPECS (Inheritance Structure)
+  # ============================================================================
+  data_specifications:
+    core_schema:
+      name: "Raw_Market_Offers"
+      description: "The base layer available to both analysts. A massive table of unlinked product offers."
+      fields:
+        - offer_id: "Unique hash of the offer."
+        - vendor: "Retailer Name (Us vs. Them)."
+        - category: "Normalized taxonomy (e.g., Home > Kitchen > Toasters)."
+        - brand: "Normalized Brand Name."
+        - price_current: "Selling Price."
+        - price_regular: "Anchor/Strikethrough Price."
+        - availability: "Boolean (In Stock / Out of Stock)."
+        - title_raw: "Unstructured text string."
+        - updated_at: "Snapshot timestamp."
+
+    variant_A_unmatched:
+      name: "The Foggy View"
+      inheritance: "Inherits Core_Schema ONLY."
+      limitation: "No mechanism to link a specific row from Vendor A to Vendor B."
+
+    variant_B_matched:
+      name: "The Sniper View"
+      inheritance: "Inherits Core_Schema + Table_Exact_Matches."
+      augmentation:
+        table_exact_matches:
+          - source_id: "Our Offer ID"
+          - target_id: "Competitor Offer ID"
+          - type: "Hard-coded Exact Match"
+
+  # ============================================================================
+  # 2.0 THE PARALLEL QUERY INDEX (Archetypes & Execution)
+  # ============================================================================
+
+  # ----------------------------------------------------------------------------
+  # ARCHETYPE 1: THE ENFORCER (Compliance & Positioning)
+  # ----------------------------------------------------------------------------
+  archetype_1_the_enforcer:
+    concern_A_parity_maintenance:
+      universal_reasoning: "Are we drifting too far above the market price, causing us to lose relevance?"
+
+      matched_execution:
+        query_name: "The Index Drift Check"
+        logic: "Select matches where (My_Price / Competitor_Price) > 1.05."
+        outcome: "Precise List: 'SKU #123 is 7% too expensive.'"
+
+      unmatched_approximation:
+        query_name: "The Average Selling Price (ASP) Gap"
+        logic: "Compare Avg(My_Price) vs Avg(Competitor_Price) Group By Brand + Category."
+        outcome: "Directional Signal: 'We are generally $50 more expensive on Samsung TVs than they are.'"
+
+    concern_B_map_policing:
+      universal_reasoning: "Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?"
+
+      matched_execution:
+        query_name: "The SKU Violation Scan"
+        logic: "Select matches where Competitor_Price < MAP_List_Value (joined by SKU)."
+        outcome: "Evidence Packet: 'They are breaking MAP on exactly these 5 items.'"
+
+      unmatched_approximation:
+        query_name: "The Brand Floor Scan"
+        logic: "Select * from Competitor_Offers where Brand = 'Dyson' AND Price < Global_Dyson_MAP_Floor."
+        outcome: "Dragnet: 'They have 3 unidentified Dyson items selling below the legal limit.'"
+
+    concern_C_brand_alignment:
+      universal_reasoning: "Does our assortment price us out of the 'Middle Class' demographic?"
+
+      matched_execution:
+        query_name: "The Premium Gap Analysis"
+        logic: "Avg(My_Price - Competitor_Price) on Matched Items Only."
+        outcome: "apples-to-apples comparison of premium markup."
+
+      unmatched_approximation:
+        query_name: "The Category Histogram"
+        logic: "Plot Count(Offers) by Price Bin ($0-50, $51-100). Compare shapes."
+        outcome: "Distribution Insight: 'They have a huge cluster of items at $20. We have nothing under $50. We are missing the entry-level shopper.'"
+
+  # ----------------------------------------------------------------------------
+  # ARCHETYPE 2: THE PREDATOR (Margin & Opportunity)
+  # ----------------------------------------------------------------------------
+  archetype_2_the_predator:
+    concern_A_monopoly_exploitation:
+      universal_reasoning: "If they are out of stock, supply is low. I should raise prices to maximize profit."
+
+      matched_execution:
+        query_name: "The Stockout Gouge"
+        logic: "Select matches where My_Stock=TRUE and Their_Stock=FALSE."
+        outcome: "Targeted Strike: 'Raise price to MSRP on these 12 specific items immediately.'"
+
+      unmatched_approximation:
+        query_name: "The Supply Chain Failure Detector"
+        logic: "Count(Competitor_In_Stock_Offers) Group By Brand. Check for sudden drops."
+        outcome: "Broad Policy: 'Their Sony inventory dropped 40%. Turn off all Sony auto-discounts until further notice.'"
+
+    concern_B_headroom_discovery:
+      universal_reasoning: "Are we pricing lower than the market floor unnecessarily?"
+
+      matched_execution:
+        query_name: "The Unnecessary Discount Finder"
+        logic: "Select where My_Price < Competitor_Price AND My_Price < My_Regular."
+        outcome: "Correction: 'Raise these 40 items by $5 to match them.'"
+
+      unmatched_approximation:
+        query_name: "The Cluster Floor Check"
+        logic: "Identify the 10th Percentile Price of the Competitor's Category. Check if My_Price < 10th_Percentile."
+        outcome: "Outlier Check: 'Why are we selling a toaster for $12 when their cheapest toaster is $19? Investigate.'"
+
+    concern_C_bottom_feeding:
+      universal_reasoning: "Identify 'garbage' low prices that we should ignore to save margin."
+
+      matched_execution:
+        query_name: "The Loss-Leader Hunter"
+        logic: "Flag matches where Competitor_Price < My_Cost_Proxy."
+        outcome: "Exclusion List: 'Do not match SKU #999; they are dumping it.'"
+
+      unmatched_approximation:
+        query_name: "The Deep Discount Filter"
+        logic: "Flag offers where (Price_Regular - Price_Current) / Price_Regular > 50%."
+        outcome: "Noise Reduction: 'Ignore any market signal from items discounted >50%; it's clearance noise.'"
+
+  # ----------------------------------------------------------------------------
+  # ARCHETYPE 3: THE HISTORIAN (Strategy Inference)
+  # ----------------------------------------------------------------------------
+  archetype_3_the_historian:
+    concern_A_promo_detection:
+      universal_reasoning: "Did they just launch a campaign, or is this random noise?"
+
+      matched_execution:
+        query_name: "The Slash-and-Burn Alert"
+        logic: "Count matches where price dropped >15% overnight."
+        outcome: "Specific Intel: 'They discounted the Ninja 3000 and the KitchenAid K5.'"
+
+      unmatched_approximation:
+        query_name: "The Category Erosion Index"
+        logic: "Calculate Avg(Price) of entire Category. Did it drop > 5%?"
+        outcome: "Event Detection: 'The entire Kitchen category moved down. Launch Counter-Promo #4.'"
+
+    concern_B_inflation_tracking:
+      universal_reasoning: "Has the market accepted a price increase? Can we move the floor up?"
+
+      matched_execution:
+        query_name: "The Item Inflation Tracker"
+        logic: "Avg price increase on same-SKU over 6 months."
+        outcome: "Validation: 'They raised the price on the runner SKU. We follow.'"
+
+      unmatched_approximation:
+        query_name: "The Minimum Viable Price Lift"
+        logic: "Track Min(Price) of the category over time."
+        outcome: "Trend: 'The cheapest item in the market is now $25 (was $20). Update our Entry Price rules.'"
+
+    concern_C_churn_analysis:
+      universal_reasoning: "Are they exiting a brand or category? If they are delisting products, we can step in to fill the void."
+
+      matched_execution:
+        query_name: "The Assortment Rotation Check"
+        logic: "Select IDs present in T_LastWeek but missing in T_Current (Competitor Only)."
+        outcome: "Specific Intel: 'They stopped selling the Dyson V10 and V11. They might be losing the vendor relationship.'"
+
+      unmatched_approximation:
+        query_name: "The Brand Volume Drop"
+        logic: "Compare Count(Offers) per Brand for T_Current vs T_LastWeek."
+        outcome: "Signal: 'Their total count of Dyson offers dropped by 40%. They are likely liquidating the brand.'"
+
+
+  # ----------------------------------------------------------------------------
+  # ARCHETYPE 4: THE MERCENARY (Optics & Psychology)
+  # ----------------------------------------------------------------------------
+  archetype_4_the_mercenary:
+    concern_A_optical_dominance:
+      universal_reasoning: "Who looks like they have the better deal (bigger discount)?"
+
+      matched_execution:
+        query_name: "The Anchor Check"
+        logic: "Select matches where My_Regular < Their_Regular."
+        outcome: "Adjustment: 'Boost our Regular Price on SKU X so our discount % looks as good as theirs.'"
+
+      unmatched_approximation:
+        query_name: "The Discount Depth Distribution"
+        logic: "Avg(Discount %) for the Category. Us vs. Them."
+        outcome: "Perception Audit: 'Their average discount is 20%. Ours is 10%. We look stingy. Increase broad markdown depth.'"
+
+    concern_B_keyword_arbitrage:
+      universal_reasoning: "What is the 'Street Price' for a specific customer search term?"
+
+      matched_execution:
+        query_name: "N/A (Matches make this redundant)"
+        logic: "Matches rely on IDs, not words."
+        outcome: "N/A"
+
+      unmatched_approximation:
+        query_name: "The Ad-Hoc Keyword Scrape"
+        logic: "Select Avg(Price) where Title LIKE '%1TB SSD%'."
+        outcome: "Proxy Match: 'The market says a 1TB SSD is worth $95. Ensure we have *something* at that price.'"
