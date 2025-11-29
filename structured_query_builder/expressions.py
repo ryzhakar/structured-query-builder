@@ -75,20 +75,25 @@ class CompoundArithmetic(BaseModel):
     Supports: (operand OP operand) OP operand
     Example: (regular_price - markdown_price) / regular_price * 100
     This covers 95%+ of real-world pricing calculations without recursion.
+
+    Now supports table aliases for multi-table queries.
     """
 
     expr_type: Literal["compound_arithmetic"] = "compound_arithmetic"
 
     # Inner expression
     inner_left_column: Optional[Column] = None
+    inner_left_table_alias: Optional[str] = None
     inner_left_value: Optional[float] = None
     inner_operator: ArithmeticOp = Field(..., description="Inner arithmetic operator")
     inner_right_column: Optional[Column] = None
+    inner_right_table_alias: Optional[str] = None
     inner_right_value: Optional[float] = None
 
     # Outer operation
     outer_operator: ArithmeticOp = Field(..., description="Outer arithmetic operator")
     outer_column: Optional[Column] = None
+    outer_table_alias: Optional[str] = None
     outer_value: Optional[float] = None
 
     alias: str = Field(..., description="Required alias for computed column")

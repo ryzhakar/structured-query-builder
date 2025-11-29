@@ -157,6 +157,8 @@ class SQLTranslator:
         # Inner expression
         if expr.inner_left_column:
             inner_left = expr.inner_left_column.value
+            if expr.inner_left_table_alias:
+                inner_left = f"{expr.inner_left_table_alias}.{inner_left}"
         elif expr.inner_left_value is not None:
             inner_left = str(expr.inner_left_value)
         else:
@@ -164,6 +166,8 @@ class SQLTranslator:
 
         if expr.inner_right_column:
             inner_right = expr.inner_right_column.value
+            if expr.inner_right_table_alias:
+                inner_right = f"{expr.inner_right_table_alias}.{inner_right}"
         elif expr.inner_right_value is not None:
             inner_right = str(expr.inner_right_value)
         else:
@@ -174,6 +178,8 @@ class SQLTranslator:
         # Outer operand
         if expr.outer_column:
             outer = expr.outer_column.value
+            if expr.outer_table_alias:
+                outer = f"{expr.outer_table_alias}.{outer}"
         elif expr.outer_value is not None:
             outer = str(expr.outer_value)
         else:

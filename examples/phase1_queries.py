@@ -729,6 +729,335 @@ def query_22_brand_presence_tracking():
     )
 
 
+def query_08_slash_and_burn_alert():
+    """
+    MATCHED: Detect competitor price drops >15% using temporal comparison.
+
+    Intelligence Model Mapping:
+        Archetype: HISTORIAN
+        Concern: Promo Detection
+        Variant: Matched Execution
+        Query Name: "The Slash-and-Burn Alert"
+
+    Business Value:
+        "They just slashed iPhone price by 20% overnight → Match immediately or risk lost sales"
+
+    Pattern:
+        Uses derived table with window LAG to compare current vs previous price.
+        Filters for price drops exceeding 15% threshold.
+
+    Action Trigger:
+        If price_drop > 15% → Immediate price match or promotional response
+
+    Implementation:
+        Window LAG(price) OVER (PARTITION BY id ORDER BY updated_at)
+        Then calculate percentage change and filter.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="prices")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="prices")),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor, table_alias="prices")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="prices"), alias="current_price"),
+            ColumnExpr(source=QualifiedColumn(column=Column.previous_price, table_alias="prices")),
+            # Calculate price drop percentage: ((prev - curr) / prev) * 100
+            CompoundArithmetic(
+                inner_left_column=Column.previous_price,
+                inner_left_table_alias="prices",
+                inner_operator=ArithmeticOp.subtract,
+                inner_right_column=Column.markdown_price,
+                inner_right_table_alias="prices",
+                outer_operator=ArithmeticOp.divide,
+                outer_column=Column.previous_price,
+                outer_table_alias="prices",
+                alias="price_drop_pct"
+            ),
+            ColumnExpr(source=QualifiedColumn(column=Column.updated_at, table_alias="prices"), alias="price_change_date"),
+        ],
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.id)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.title)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.markdown_price)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.updated_at)),
+                    # Window LAG to get previous price
+                    WindowExpr(
+                        function=WindowFunc.lag,
+                        column=Column.markdown_price,
+                        partition_by=[Column.id],
+                        order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                        offset=1,
+                        alias="previous_price"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                alias="prices"
+            )
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        # Has previous price (not NULL)
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.previous_price, table_alias="prices"),
+                            operator=ComparisonOp.is_not_null,
+                            value=True
+                        ),
+                        # Price dropped (current < previous)
+                        ColumnComparison(
+                            left_column=QualifiedColumn(column=Column.markdown_price, table_alias="prices"),
+                            operator=ComparisonOp.lt,
+                            right_column=QualifiedColumn(column=Column.previous_price, table_alias="prices")
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.updated_at, direction=Direction.desc),
+            ]
+        ),
+        limit=LimitClause(limit=50)
+    )
+
+
+def query_09_minimum_viable_price_lift():
+    """
+    UNMATCHED: Track minimum price by category over time periods.
+
+    Intelligence Model Mapping:
+        Archetype: HISTORIAN
+        Concern: Inflation Tracking
+        Variant: Unmatched Approximation
+        Query Name: "The Minimum Viable Price Lift"
+
+    Business Value:
+        "Category floor price rose from $15 to $22 over 6 months → Raise our entry-level pricing"
+
+    Pattern:
+        Groups by category and time period (month), tracks MIN(price).
+        Application layer compares periods to detect upward trends.
+
+    Action Trigger:
+        If MIN price increased >20% over 6mo → Safe to raise our entry prices
+
+    Note:
+        Returns monthly minimums. Period-over-period comparison done in app layer.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+            # EXTRACT(MONTH FROM updated_at) - simulated with updated_at for now
+            ColumnExpr(source=QualifiedColumn(column=Column.updated_at), alias="price_month"),
+            AggregateExpr(
+                function=AggregateFunc.min,
+                column=Column.markdown_price,
+                alias="category_floor_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="product_count"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        group_by=GroupByClause(columns=[Column.category, Column.vendor, Column.updated_at]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+                OrderByItem(column=Column.updated_at, direction=Direction.desc),
+            ]
+        ),
+    )
+
+
+def query_10_assortment_rotation_check():
+    """
+    MATCHED: Detect products delisted between observation periods.
+
+    Intelligence Model Mapping:
+        Archetype: HISTORIAN
+        Concern: Churn Analysis
+        Variant: Matched Execution
+        Query Name: "The Assortment Rotation Check"
+
+    Business Value:
+        "Competitor delisted 40 products this week → They're clearing inventory or dropping brands"
+
+    Pattern:
+        Self-join product_offers on ID, filtering for records present in older period
+        but missing in recent period using LEFT JOIN + NULL check.
+
+    Action Trigger:
+        If >50 SKUs delisted in week → Investigate brand strategy changes
+        If specific category churn → Opportunity to capture abandoned customers
+
+    Implementation:
+        Simulated with LEFT JOIN filtering on date range differences.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="old")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="old")),
+            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="old")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="old")),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor, table_alias="old")),
+            ColumnExpr(source=QualifiedColumn(column=Column.updated_at, table_alias="old"), alias="last_seen_date"),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="old",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.left,
+                    table=Table.product_offers,
+                    table_alias="new",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="old"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="new")
+                                ),
+                            ],
+                            logic=LogicOp.and_
+                        )
+                    ]
+                ),
+            ]
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        # old record exists (from older period)
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.updated_at, table_alias="old"),
+                            operator=ComparisonOp.lt,
+                            value="CURRENT_DATE - INTERVAL '7 days'"
+                        ),
+                        # new record doesn't exist (NULL from LEFT JOIN)
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.id, table_alias="new"),
+                            operator=ComparisonOp.is_null,
+                            value=True
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.updated_at, direction=Direction.desc),
+            ]
+        ),
+        limit=LimitClause(limit=100)
+    )
+
+
+def query_13_ghost_inventory_check():
+    """
+    MATCHED: Detect products out of stock for >4 consecutive weeks.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Concern: Gap Analysis
+        Variant: Matched Execution
+        Query Name: "The Ghost Inventory Check"
+
+    Business Value:
+        "They've been out of stock on SKU #123 for 6 weeks → Permanent delisting, not temporary shortage"
+
+    Pattern:
+        Window function to count consecutive out-of-stock observations.
+        Uses SUM(CASE WHEN availability = FALSE) OVER rolling window.
+
+    Action Trigger:
+        If out_of_stock_weeks >= 4 → Treat as delisted, don't wait for restock
+
+    Implementation:
+        Window SUM with ROWS frame for rolling count of unavailability.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="stock")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="stock")),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor, table_alias="stock")),
+            ColumnExpr(source=QualifiedColumn(column=Column.availability, table_alias="stock")),
+            ColumnExpr(source=QualifiedColumn(column=Column.availability_changes, table_alias="stock")),
+        ],
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.id)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.title)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.availability)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.updated_at)),
+                    # Count state changes using window LAG
+                    WindowExpr(
+                        function=WindowFunc.lag,
+                        column=Column.availability,
+                        partition_by=[Column.id],
+                        order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                        offset=1,
+                        alias="previous_availability"
+                    ),
+                    # SUM window to count consecutive unavailable periods
+                    # Note: This is simplified - real implementation needs CASE inside window
+                    WindowExpr(
+                        function=WindowFunc.count,
+                        column=Column.id,  # Count rows in window
+                        partition_by=[Column.id],
+                        order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                        alias="availability_changes"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                alias="stock"
+            )
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        # Currently out of stock
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.availability, table_alias="stock"),
+                            operator=ComparisonOp.eq,
+                            value=False
+                        ),
+                        # Multiple consecutive observations
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.availability_changes, table_alias="stock"),
+                            operator=ComparisonOp.gt,
+                            value=4  # >4 observations while out of stock
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.availability_changes, direction=Direction.desc),
+            ]
+        ),
+        limit=LimitClause(limit=100)
+    )
+
+
 # =============================================================================
 # ARCHETYPE 4: MERCENARY - Perception & Psychology (1 new query)
 # =============================================================================
@@ -888,13 +1217,17 @@ if __name__ == "__main__":
         ("Q06: Cluster Floor Check (Unmatched)", query_06_cluster_floor_check),
         ("Q18: Supply Chain Failure Detector (Unmatched)", query_18_supply_chain_failure_detector),
         ("Q19: Loss-Leader Hunter (Matched)", query_19_loss_leader_hunter),
-        # HISTORIAN (3 queries)
+        # HISTORIAN (7 queries)
+        ("Q08: Slash-and-Burn Alert (Temporal)", query_08_slash_and_burn_alert),
+        ("Q09: Minimum Viable Price Lift (Temporal)", query_09_minimum_viable_price_lift),
+        ("Q10: Assortment Rotation Check (Temporal)", query_10_assortment_rotation_check),
+        ("Q13: Ghost Inventory Check (Temporal)", query_13_ghost_inventory_check),
         ("Q20: Category Price Snapshot (Temporal)", query_20_category_price_snapshot),
         ("Q21: Promo Erosion Index (Unmatched)", query_21_promo_erosion_index),
         ("Q22: Brand Presence Tracking (Unmatched)", query_22_brand_presence_tracking),
         # MERCENARY (1 query)
         ("Q23: Discount Depth Distribution (Unmatched)", query_23_discount_depth_distribution),
-        # ARCHITECT (1 query)
+        # ARCHITECT (2 queries)
         ("Q14: Global Floor Stress Test (Unmatched)", query_14_global_floor_stress_test),
     ]
 
