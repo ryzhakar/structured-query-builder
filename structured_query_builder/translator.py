@@ -126,7 +126,10 @@ class SQLTranslator:
         """Translate two-operand arithmetic."""
         # Left operand
         if expr.left_column:
-            left = expr.left_column.value
+            if expr.left_table_alias:
+                left = f"{expr.left_table_alias}.{expr.left_column.value}"
+            else:
+                left = expr.left_column.value
         elif expr.left_value is not None:
             left = str(expr.left_value)
         else:
@@ -134,7 +137,10 @@ class SQLTranslator:
 
         # Right operand
         if expr.right_column:
-            right = expr.right_column.value
+            if expr.right_table_alias:
+                right = f"{expr.right_table_alias}.{expr.right_column.value}"
+            else:
+                right = expr.right_column.value
         elif expr.right_value is not None:
             right = str(expr.right_value)
         else:
