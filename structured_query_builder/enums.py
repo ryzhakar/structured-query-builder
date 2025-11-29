@@ -86,6 +86,8 @@ class AggregateFunc(str, Enum):
     stddev_pop = "STDDEV_POP"  # Standard deviation (population)
     variance = "VARIANCE"  # Variance (sample)
     var_pop = "VAR_POP"  # Variance (population)
+    percentile_cont = "PERCENTILE_CONT"  # Continuous percentile (interpolated)
+    percentile_disc = "PERCENTILE_DISC"  # Discrete percentile (actual value)
 
 
 class WindowFunc(str, Enum):

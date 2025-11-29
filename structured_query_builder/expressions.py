@@ -100,15 +100,28 @@ class AggregateExpr(BaseModel):
 
     Maps to: FUNC([DISTINCT] column) AS alias or FUNC(*) AS alias
     Supports table aliases: AVG(my.price) for multi-table queries
+    Supports nested arithmetic: AVG(col1 - col2) for calculating aggregate of differences
+    Supports percentile functions: PERCENTILE_CONT(0.1) for 10th percentile
     """
 
     expr_type: Literal["aggregate"] = "aggregate"
     function: AggregateFunc = Field(..., description="Aggregate function")
     column: Optional[Column] = Field(
-        None, description="Column to aggregate; None for COUNT(*)"
+        None, description="Column to aggregate; None for COUNT(*) or when using arithmetic_input"
     )
     table_alias: Optional[str] = Field(None, description="Table alias for column")
     distinct: bool = Field(False, description="Whether to use DISTINCT")
+
+    # Support for nested arithmetic in aggregates (e.g., AVG(my.price - comp.price))
+    arithmetic_input: Optional["BinaryArithmetic"] = Field(
+        None, description="Arithmetic expression to aggregate instead of simple column"
+    )
+
+    # Support for percentile functions
+    percentile: Optional[float] = Field(
+        None, description="Percentile value (0.0 to 1.0) for PERCENTILE_CONT/PERCENTILE_DISC functions"
+    )
+
     alias: str = Field(..., description="Required alias for aggregate result")
 
 
@@ -198,3 +211,6 @@ SelectExpr = Union[
     WindowExpr,
     CaseExpr,
 ]
+
+# Rebuild AggregateExpr to resolve forward reference to BinaryArithmetic
+AggregateExpr.model_rebuild()

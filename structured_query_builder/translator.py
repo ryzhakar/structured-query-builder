@@ -122,8 +122,8 @@ class SQLTranslator:
             return f"{col_str} AS {expr.alias}"
         return col_str
 
-    def _translate_binary_arithmetic(self, expr: BinaryArithmetic) -> str:
-        """Translate two-operand arithmetic."""
+    def _translate_binary_arithmetic_raw(self, expr: BinaryArithmetic) -> str:
+        """Translate two-operand arithmetic without alias (for use in aggregates)."""
         # Left operand
         if expr.left_column:
             if expr.left_table_alias:
@@ -146,7 +146,11 @@ class SQLTranslator:
         else:
             raise ValueError("Binary arithmetic must have right operand")
 
-        return f"({left} {expr.operator.value} {right}) AS {expr.alias}"
+        return f"({left} {expr.operator.value} {right})"
+
+    def _translate_binary_arithmetic(self, expr: BinaryArithmetic) -> str:
+        """Translate two-operand arithmetic."""
+        return f"{self._translate_binary_arithmetic_raw(expr)} AS {expr.alias}"
 
     def _translate_compound_arithmetic(self, expr: CompoundArithmetic) -> str:
         """Translate three-operand nested arithmetic."""
@@ -180,6 +184,30 @@ class SQLTranslator:
     def _translate_aggregate(self, expr: AggregateExpr) -> str:
         """Translate aggregate function."""
         func = expr.function.value
+
+        # Handle percentile functions with percentile parameter
+        if expr.function in (AggregateFunc.percentile_cont, AggregateFunc.percentile_disc):
+            if expr.percentile is None:
+                raise ValueError(f"{func} requires percentile parameter")
+            if expr.column is None and expr.arithmetic_input is None:
+                raise ValueError(f"{func} requires a column or arithmetic_input argument")
+
+            # Build the argument
+            if expr.arithmetic_input:
+                arg = self._translate_binary_arithmetic_raw(expr.arithmetic_input)
+            elif expr.table_alias:
+                arg = f"{expr.table_alias}.{expr.column.value}"
+            else:
+                arg = expr.column.value
+
+            return f"{func}({expr.percentile}) WITHIN GROUP (ORDER BY {arg}) AS {expr.alias}"
+
+        # Handle nested arithmetic in aggregates (e.g., AVG(my.price - comp.price))
+        if expr.arithmetic_input:
+            arg = self._translate_binary_arithmetic_raw(expr.arithmetic_input)
+            if expr.distinct:
+                arg = f"DISTINCT {arg}"
+            return f"{func}({arg}) AS {expr.alias}"
 
         # Handle COUNT(*)
         if expr.column is None:
