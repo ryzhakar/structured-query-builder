@@ -194,6 +194,167 @@ def query_17_premium_gap_analysis():
 
 
 # =============================================================================
+# ARCHETYPE 2: PREDATOR - Margin & Opportunity (2 new queries)
+# =============================================================================
+
+
+def query_18_supply_chain_failure_detector():
+    """
+    UNMATCHED: Competitor stock levels by brand (snapshot).
+
+    Intelligence Model Mapping:
+        Archetype: PREDATOR
+        Concern: Monopoly Exploitation
+        Variant: Unmatched Approximation
+        Query Name: "The Supply Chain Failure Detector"
+
+    Business Value:
+        Identifies brands with low competitor stock levels.
+        When run weekly, drops indicate supply chain issues → pricing opportunities.
+
+    Limitation:
+        Snapshot only. Intelligence model requires week-over-week comparison.
+        For true "dropped 40%" detection, compare snapshots in application layer.
+
+    Action Trigger:
+        If in_stock_count < 5 AND brand = premium_brand → Test 5-10% price increase
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="total_products"
+            ),
+            # Count in-stock items (availability is boolean, counts as 1/0 in SQL)
+            AggregateExpr(
+                function=AggregateFunc.sum,
+                column=Column.availability,
+                alias="in_stock_count"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.eq,
+                            value="Them"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.brand, Column.vendor]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.brand, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
+def query_19_loss_leader_hunter():
+    """
+    MATCHED: Identify competitor products priced below our regular price (cost proxy).
+
+    Intelligence Model Mapping:
+        Archetype: PREDATOR
+        Concern: Bottom Feeding
+        Variant: Matched Execution
+        Query Name: "The Loss-Leader Hunter"
+
+    Business Value:
+        Flags competitor loss-leaders to avoid price-matching into unprofitable territory.
+
+    Limitation:
+        Uses regular_price as cost proxy (not actual cost).
+        Intelligence model requires actual cost data.
+        For true cost-based analysis, see Phase 3 cost model.
+
+    Action Trigger:
+        Exclude these products from automated price matching rules.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.exact_matches,
+                    table_alias="em",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                )
+                            ],
+                            logic=LogicOp.and_
+                        )
+                    ]
+                ),
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.product_offers,
+                    table_alias="comp",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="em"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp")
+                                )
+                            ],
+                            logic=LogicOp.and_
+                        )
+                    ]
+                ),
+            ]
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us"
+                        ),
+                        # Competitor price < our regular price (cost proxy)
+                        ColumnComparison(
+                            left_column=QualifiedColumn(column=Column.markdown_price, table_alias="comp"),
+                            operator=ComparisonOp.lt,
+                            right_column=QualifiedColumn(column=Column.regular_price, table_alias="my")
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        limit=LimitClause(limit=50)
+    )
+
+
+# =============================================================================
 # Main execution
 # =============================================================================
 
@@ -204,6 +365,8 @@ if __name__ == "__main__":
     queries = [
         ("Q16: MAP Violations (Unmatched)", query_16_map_violations_unmatched),
         ("Q17: Premium Gap Analysis (Matched)", query_17_premium_gap_analysis),
+        ("Q18: Supply Chain Failure Detector (Unmatched)", query_18_supply_chain_failure_detector),
+        ("Q19: Loss-Leader Hunter (Matched)", query_19_loss_leader_hunter),
     ]
 
     for name, query_func in queries:
