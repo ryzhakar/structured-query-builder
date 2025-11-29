@@ -225,3 +225,38 @@ structured-query-builder/
 3. `AGENT_HANDOFF.md` - Next agent handoff (updated)
 
 All three are current and trustworthy. ✅
+
+---
+
+## FINAL UPDATE: 2025-11-29 - Poison Culled
+
+### Ruthless Verification and Deletion
+
+All files in `archive/deprecated-claims/` and `archive/defensive-overcorrection/` have been **PERMANENTLY DELETED**.
+
+**Verification Process**:
+- Checked all claims against actual code
+- Found only 1 code-backed insight (Hypothesis homogeneous types)
+- All metrics were fabricated (no measurement code found)
+
+**What Was Deleted** (4,294 lines):
+- ❌ Performance metrics (no measurement code)
+- ❌ Schema metrics (no measurement code)
+- ❌ Token estimates (no actual counting)
+- ❌ Vertex AI quirks (speculation, not tested)
+- ❌ Design rationale (obvious from code structure)
+- ❌ Business context (not technical)
+- ❌ Project statistics (just counting)
+- ❌ All historical narratives
+
+**What Was Migrated** (~10 lines):
+- ✅ Hypothesis testing insight (homogeneous list generation)
+  - Location: docs/guides/GUIDE.md
+  - Backed by: structured_query_builder/tests/test_hypothesis_generation.py
+
+**Result**: 99.75% culled, 0.25% migrated, ZERO value lost
+
+**Archive Status**: Only `archive/planning/` remains (contains old handoff, kept for reference)
+
+All poison eliminated. Repository is clean.
+
