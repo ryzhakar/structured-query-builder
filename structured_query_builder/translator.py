@@ -496,11 +496,22 @@ class SQLTranslator:
         parts.append("SELECT " + ", ".join(expr_strs))
 
         # FROM
-        parts.append(f"FROM {derived.from_table.value}")
+        table_str = derived.from_table.value
+        if derived.table_alias:
+            table_str = f"{table_str} AS {derived.table_alias}"
+        parts.append(f"FROM {table_str}")
+
+        # Joins
+        for join in derived.joins:
+            parts.append(self._translate_join(join))
 
         # WHERE
         if derived.where:
             parts.append(self._translate_where_l0(derived.where))
+
+        # GROUP BY
+        if derived.group_by:
+            parts.append(self._translate_group_by(derived.group_by))
 
         return " ".join(parts)
 
