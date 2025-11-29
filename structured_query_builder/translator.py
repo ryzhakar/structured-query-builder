@@ -243,7 +243,11 @@ class SQLTranslator:
             else:
                 arg = ""
         else:
-            arg = expr.column.value
+            # Include table alias if specified (for derived table columns)
+            if expr.table_alias:
+                arg = f"{expr.table_alias}.{expr.column.value}"
+            else:
+                arg = expr.column.value
 
         # Handle LAG/LEAD with offset and default
         if expr.function.value in ("LAG", "LEAD"):

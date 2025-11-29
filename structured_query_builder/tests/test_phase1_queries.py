@@ -232,16 +232,17 @@ class TestPhase1Queries:
         assert "GROUP BY brand, category" in sql
 
     def test_query_18_supply_chain(self):
-        """Test Q18: Supply Chain Failure Detector (Unmatched)."""
+        """Test Q18: Supply Chain Failure Detector (temporal with LAG)."""
         from examples.phase1_queries import query_18_supply_chain_failure_detector
 
         query = query_18_supply_chain_failure_detector()
         sql = translate_query(query)
 
-        # Verify aggregates
-        assert "COUNT(*)" in sql
+        # Verify temporal pattern with LAG window function
+        assert "LAG(weekly.availability_changes)" in sql
+        assert "PARTITION BY brand" in sql
         assert "SUM(availability)" in sql
-        assert "GROUP BY brand, vendor" in sql
+        assert "GROUP BY brand, updated_at" in sql
 
     def test_query_19_loss_leader(self):
         """Test Q19: Loss-Leader Hunter (Matched)."""

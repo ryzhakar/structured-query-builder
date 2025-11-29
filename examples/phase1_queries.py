@@ -278,7 +278,7 @@ def query_03_category_histogram():
 
 def query_18_supply_chain_failure_detector():
     """
-    UNMATCHED: Competitor stock levels by brand (snapshot).
+    UNMATCHED: Detect supply chain failures via week-over-week availability drops.
 
     Intelligence Model Mapping:
         Archetype: PREDATOR
@@ -287,36 +287,57 @@ def query_18_supply_chain_failure_detector():
         Query Name: "The Supply Chain Failure Detector"
 
     Business Value:
-        Identifies brands with low competitor stock levels.
-        When run weekly, drops indicate supply chain issues → pricing opportunities.
+        Detects sudden drops in competitor stock availability (e.g., 40%+ decrease).
+        Supply chain failures create temporary monopoly pricing opportunities.
 
-    Limitation:
-        Snapshot only. Intelligence model requires week-over-week comparison.
-        For true "dropped 40%" detection, compare snapshots in application layer.
+    Pattern:
+        1. Aggregate availability by brand and week
+        2. Use LAG to get previous week's count
+        3. Calculate percentage drop
+        4. Filter for significant drops (>40%)
 
     Action Trigger:
-        If in_stock_count < 5 AND brand = premium_brand → Test 5-10% price increase
+        If availability_drop_pct > 0.40 AND brand = premium_brand → Test 5-10% price increase
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.brand)),
-            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
-            AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="total_products"
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="weekly")),
+            ColumnExpr(source=QualifiedColumn(column=Column.updated_at, table_alias="weekly"), alias="week"),
+            ColumnExpr(source=QualifiedColumn(column=Column.availability_changes, table_alias="weekly"), alias="current_available"),
+            # LAG to get previous week's availability count - now in outer query
+            WindowExpr(
+                function=WindowFunc.lag,
+                column=Column.availability_changes,
+                table_alias="weekly",  # Reference derived table column
+                partition_by=[Column.brand],
+                order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                offset=1,
+                alias="previous_availability"
             ),
-            # Count in-stock items (availability is boolean, counts as 1/0 in SQL)
-            AggregateExpr(
-                function=AggregateFunc.sum,
-                column=Column.availability,
-                alias="in_stock_count"
+            # Calculate drop percentage: (prev - curr) / prev
+            CompoundArithmetic(
+                inner_left_column=Column.previous_availability,
+                inner_operator=ArithmeticOp.subtract,
+                inner_right_column=Column.availability_changes,
+                inner_right_table_alias="weekly",
+                outer_operator=ArithmeticOp.divide,
+                outer_column=Column.previous_availability,
+                alias="availability_drop_pct"
             ),
         ],
-        from_=FromClause(table=Table.product_offers),
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.updated_at)),
+                    AggregateExpr(
+                        function=AggregateFunc.sum,
+                        column=Column.availability,
+                        alias="availability_changes"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                where=WhereL0(
                     conditions=[
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.vendor),
@@ -325,14 +346,15 @@ def query_18_supply_chain_failure_detector():
                         ),
                     ],
                     logic=LogicOp.and_
-                )
-            ],
-            group_logic=LogicOp.and_
+                ),
+                group_by=GroupByClause(columns=[Column.brand, Column.updated_at]),
+                alias="weekly"
+            )
         ),
-        group_by=GroupByClause(columns=[Column.brand, Column.vendor]),
         order_by=OrderByClause(
             items=[
                 OrderByItem(column=Column.brand, direction=Direction.asc),
+                OrderByItem(column=Column.updated_at, direction=Direction.desc),
             ]
         ),
     )
