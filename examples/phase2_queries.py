@@ -150,7 +150,7 @@ def query_25_brand_weighting_fingerprint():
 
 def query_26_price_ladder_void_scanner():
     """
-    UNMATCHED: Identify empty price points in competitor's catalog.
+    UNMATCHED: Analyze price distribution to identify empty price points.
 
     Intelligence Model Mapping:
         Archetype: ARCHITECT
@@ -163,8 +163,14 @@ def query_26_price_ladder_void_scanner():
         "They have no toasters between $50-$80 → Source a $69.99 model to own that tier"
 
     Pattern:
-        Bin prices into buckets, identify gaps via application layer.
-        This query returns price distribution by category.
+        Returns price statistics (MIN, MAX, AVG, STDDEV, percentiles) by category/vendor.
+        Application layer bins into tiers and identifies gaps.
+
+    Schema Limitation:
+        True histogram binning (GROUP BY CASE expression) not supported without:
+        - Repeating CASE in GROUP BY (requires expression support in GroupByClause)
+        - Derived tables with full GROUP BY (DerivedTable limited to simple SELECT)
+        Current approach: Provide statistical foundation for application-layer binning.
 
     Action Trigger:
         If gap found in popular category → Source product to fill void
@@ -189,12 +195,24 @@ def query_26_price_ladder_void_scanner():
                 column=Column.markdown_price,
                 alias="avg_price"
             ),
+            # Percentiles for tier analysis
+            AggregateExpr(
+                function=AggregateFunc.percentile_cont,
+                column=Column.markdown_price,
+                percentile=0.25,
+                alias="p25_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.percentile_cont,
+                column=Column.markdown_price,
+                percentile=0.75,
+                alias="p75_price"
+            ),
             AggregateExpr(
                 function=AggregateFunc.count,
                 column=None,
                 alias="product_count"
             ),
-            # Standard deviation shows price clustering
             AggregateExpr(
                 function=AggregateFunc.stddev,
                 column=Column.markdown_price,
