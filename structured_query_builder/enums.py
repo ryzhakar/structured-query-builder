@@ -33,6 +33,7 @@ class Column(str, Enum):
     is_markdown = "is_markdown"
     availability = "availability"  # In stock / out of stock boolean
     created_at = "created_at"
+    updated_at = "updated_at"  # Timestamp for temporal queries
 
     # exact_matches columns (lexicographically sorted, no A:B + B:A duplicates by ETL convention)
     source_id = "source_id"  # Lexicographically smaller offer ID
@@ -81,6 +82,10 @@ class AggregateFunc(str, Enum):
     min = "MIN"
     max = "MAX"
     count_distinct = "COUNT_DISTINCT"  # Special handling for COUNT(DISTINCT ...)
+    stddev = "STDDEV"  # Standard deviation (sample)
+    stddev_pop = "STDDEV_POP"  # Standard deviation (population)
+    variance = "VARIANCE"  # Variance (sample)
+    var_pop = "VAR_POP"  # Variance (population)
 
 
 class WindowFunc(str, Enum):
