@@ -454,6 +454,213 @@ def query_19_loss_leader_hunter():
     )
 
 
+def query_11_stockout_gouge():
+    """
+    MATCHED: Exploit monopoly when competitor is out of stock.
+
+    Intelligence Model Mapping:
+        Archetype: PREDATOR
+        Concern: Monopoly Exploitation
+        Variant: Matched Execution
+        Query Name: "The Stockout Gouge"
+
+    Business Value:
+        "They're out of stock on these 12 items → Raise prices 5-10%"
+        When competitor unavailable, you have temporary monopoly pricing power.
+
+    Pattern:
+        Simple filtered JOIN: my.availability = TRUE AND comp.availability = FALSE
+
+    Action Trigger:
+        Test 5-10% price increase on matched products where we're in stock and they're not.
+
+    Status: GOOD
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.availability, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.availability, table_alias="comp")),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.exact_matches,
+                    table_alias="em",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                )
+                            ],
+                            logic=LogicOp.and_
+                        )
+                    ]
+                ),
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.product_offers,
+                    table_alias="comp",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="em"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp")
+                                )
+                            ],
+                            logic=LogicOp.and_
+                        )
+                    ]
+                ),
+            ]
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us"
+                        ),
+                        # We have stock
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.availability, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value=True
+                        ),
+                        # They don't have stock
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.availability, table_alias="comp"),
+                            operator=ComparisonOp.eq,
+                            value=False
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        limit=LimitClause(limit=100)
+    )
+
+
+def query_12_deep_discount_filter():
+    """
+    UNMATCHED: Filter out clearance noise (>50% off is not strategic pricing).
+
+    Intelligence Model Mapping:
+        Archetype: PREDATOR
+        Concern: Bottom Feeding (Clearance Detection)
+        Variant: Unmatched Approximation
+        Query Name: "The Deep Discount Filter"
+
+    Business Value:
+        "Ignore these 80 items - they're clearing inventory, not setting strategy"
+        Deep discounts (>50% off) represent clearance, not competitive pricing signals.
+
+    Pattern:
+        Calculate discount percentage: (regular - markdown) / regular
+        Filter for discount_percent > 0.50 (50%)
+
+    Action Trigger:
+        Exclude from price matching algorithms - don't follow clearance pricing.
+
+    Status: GOOD
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="discounts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="discounts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="discounts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="discounts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="discounts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="discounts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.discount_amount, table_alias="discounts")),
+            ColumnExpr(source=QualifiedColumn(column=Column.discount_percent, table_alias="discounts")),
+        ],
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.id)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.title)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.category)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.regular_price)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.markdown_price)),
+                    # Discount amount: regular - markdown
+                    BinaryArithmetic(
+                        left_column=Column.regular_price,
+                        operator=ArithmeticOp.subtract,
+                        right_column=Column.markdown_price,
+                        alias="discount_amount"
+                    ),
+                    # Discount percentage: (regular - markdown) / regular
+                    CompoundArithmetic(
+                        inner_left_column=Column.regular_price,
+                        inner_operator=ArithmeticOp.subtract,
+                        inner_right_column=Column.markdown_price,
+                        outer_operator=ArithmeticOp.divide,
+                        outer_column=Column.regular_price,
+                        alias="discount_percent"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                where=WhereL0(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.ne,
+                            value="Us"
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.is_markdown),
+                            operator=ComparisonOp.eq,
+                            value=True
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                ),
+                alias="discounts"
+            )
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        # Filter for deep discounts > 50%
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.discount_percent, table_alias="discounts"),
+                            operator=ComparisonOp.gt,
+                            value=0.50
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.discount_percent, direction=Direction.desc),
+            ]
+        ),
+        limit=LimitClause(limit=100)
+    )
+
+
 def query_06_cluster_floor_check():
     """
     UNMATCHED: Identify products priced below market 10th percentile.

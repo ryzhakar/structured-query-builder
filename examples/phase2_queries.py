@@ -278,6 +278,127 @@ def query_26_price_ladder_void_scanner():
     )
 
 
+def query_15_category_margin_proxy():
+    """
+    MATCHED: Calculate margin headroom opportunity by comparing competitor vs our prices.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Concern: Margin Potential Discovery
+        Variant: Matched Execution
+        Query Name: "The Category Margin Proxy"
+
+    Business Value:
+        "How much pricing power do we have in each category?"
+        (Competitor_Avg - My_Avg) / My_Avg reveals margin opportunity.
+
+    Pattern:
+        1. Aggregate AVG prices by category for "Us" and "Them"
+        2. Calculate percentage gap: (comp - my) / my
+        3. Higher gap = more margin headroom
+
+    Action Trigger:
+        If gap > 15% → Test price increases in that category
+        If gap < 5% → We're at market ceiling, focus on volume
+
+    Status: GOOD
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="margins")),
+            ColumnExpr(source=QualifiedColumn(column=Column.my_avg_price, table_alias="margins")),
+            ColumnExpr(source=QualifiedColumn(column=Column.comp_avg_price, table_alias="margins")),
+            # Calculate margin opportunity: (comp_avg - my_avg) / my_avg
+            CompoundArithmetic(
+                inner_left_column=Column.comp_avg_price,
+                inner_left_table_alias="margins",
+                inner_operator=ArithmeticOp.subtract,
+                inner_right_column=Column.my_avg_price,
+                inner_right_table_alias="margins",
+                outer_operator=ArithmeticOp.divide,
+                outer_column=Column.my_avg_price,
+                outer_table_alias="margins",
+                alias="margin_opportunity_pct"
+            ),
+        ],
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+                    AggregateExpr(
+                        function=AggregateFunc.avg,
+                        column=Column.markdown_price,
+                        table_alias="my",
+                        alias="my_avg_price"
+                    ),
+                    AggregateExpr(
+                        function=AggregateFunc.avg,
+                        column=Column.markdown_price,
+                        table_alias="comp",
+                        alias="comp_avg_price"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                table_alias="my",
+                joins=[
+                    JoinSpec(
+                        join_type=JoinType.inner,
+                        table=Table.exact_matches,
+                        table_alias="em",
+                        on_conditions=[
+                            ConditionGroup(
+                                conditions=[
+                                    ColumnComparison(
+                                        left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                        operator=ComparisonOp.eq,
+                                        right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                    )
+                                ],
+                                logic=LogicOp.and_
+                            )
+                        ]
+                    ),
+                    JoinSpec(
+                        join_type=JoinType.inner,
+                        table=Table.product_offers,
+                        table_alias="comp",
+                        on_conditions=[
+                            ConditionGroup(
+                                conditions=[
+                                    ColumnComparison(
+                                        left_column=QualifiedColumn(column=Column.target_id, table_alias="em"),
+                                        operator=ComparisonOp.eq,
+                                        right_column=QualifiedColumn(column=Column.id, table_alias="comp")
+                                    )
+                                ],
+                                logic=LogicOp.and_
+                            )
+                        ]
+                    ),
+                ],
+                where=WhereL0(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                ),
+                group_by=GroupByClause(columns=[Column.category]),
+                alias="margins"
+            )
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.margin_opportunity_pct, direction=Direction.desc),
+            ]
+        ),
+        limit=LimitClause(limit=50)
+    )
+
+
 # =============================================================================
 # Main execution
 # =============================================================================
