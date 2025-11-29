@@ -1,3 +1,10 @@
+> ⚠️ **Usage Note (2025-11-29)**: Technical constraints in this document are accurate and useful.
+> Status claims ("production ready") are outdated from commit 02 (pre-confession period).
+> 
+> **Trust**: Vertex AI limitations, GitHub issues analysis, technical constraints
+> **Verify independently**: Project status/readiness claims
+> **See**: README.md for current accurate project status
+
 # Vertex AI Structured Output: Real Constraints & Findings
 
 **Date**: 2025-11-28 (Updated with comprehensive GitHub analysis)

@@ -1,3 +1,10 @@
+> ⚠️ **Status Updated (2025-11-29)**: This guide references "production-ready" which is outdated.
+> Current accurate status: **Proof-of-concept with 37% use case coverage** (not production-tested with LLM).
+> See README.md for current honest assessment.
+> 
+> **Use this guide for**: Patterns, examples, architecture understanding
+> **Do not use for**: Project status or readiness assessment
+
 # Structured Query Builder: Complete Guide
 
 **Last Updated**: 2025-11-28
