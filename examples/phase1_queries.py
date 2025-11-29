@@ -194,6 +194,83 @@ def query_17_premium_gap_analysis():
     )
 
 
+def query_03_category_histogram():
+    """
+    UNMATCHED: Analyze price distribution to detect demographic gaps.
+
+    Intelligence Model Mapping:
+        Archetype: ENFORCER
+        Concern: Brand Alignment
+        Variant: Unmatched Approximation
+        Query Name: "The Category Histogram"
+
+    Business Value:
+        "They have a huge cluster of items at $20. We have nothing under $50.
+        We are missing the entry-level shopper."
+
+    Pattern:
+        Returns price percentiles and quartile counts for distribution analysis.
+        Shows where vendor catalogs cluster on the price spectrum.
+
+    Schema Limitation:
+        True histogram binning (SUM(CASE...)) requires CaseExpr in aggregate functions.
+        Current approach: Provide percentile-based distribution metrics.
+
+    Action Trigger:
+        If p25_comp << p25_ours → We're missing low-price entry segment
+        If p75_comp >> p75_ours → We're missing premium segment
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="total_products"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.percentile_cont,
+                column=Column.markdown_price,
+                percentile=0.10,
+                alias="p10_entry_tier"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.percentile_cont,
+                column=Column.markdown_price,
+                percentile=0.25,
+                alias="p25_low_tier"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.percentile_cont,
+                column=Column.markdown_price,
+                percentile=0.50,
+                alias="p50_median"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.percentile_cont,
+                column=Column.markdown_price,
+                percentile=0.75,
+                alias="p75_high_tier"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.percentile_cont,
+                column=Column.markdown_price,
+                percentile=0.90,
+                alias="p90_premium_tier"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        group_by=GroupByClause(columns=[Column.category, Column.vendor]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+                OrderByItem(column=Column.vendor, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
 # =============================================================================
 # ARCHETYPE 2: PREDATOR - Margin & Opportunity (2 new queries)
 # =============================================================================
@@ -803,9 +880,10 @@ if __name__ == "__main__":
     print("=" * 80)
 
     queries = [
-        # ENFORCER (2 queries)
+        # ENFORCER (3 queries)
         ("Q16: MAP Violations (Unmatched)", query_16_map_violations_unmatched),
         ("Q17: Premium Gap Analysis (Matched)", query_17_premium_gap_analysis),
+        ("Q03: Category Histogram (Unmatched)", query_03_category_histogram),
         # PREDATOR (3 queries)
         ("Q06: Cluster Floor Check (Unmatched)", query_06_cluster_floor_check),
         ("Q18: Supply Chain Failure Detector (Unmatched)", query_18_supply_chain_failure_detector),
