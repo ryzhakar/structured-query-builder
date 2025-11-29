@@ -50,16 +50,19 @@ class BinaryArithmetic(BaseModel):
 
     Supports: column OP column, column OP value, value OP column
     Examples: regular_price - markdown_price, price * 1.1
+    With table aliases: my.price - comp.price
     """
 
     expr_type: Literal["binary_arithmetic"] = "binary_arithmetic"
 
     left_column: Optional[Column] = Field(None, description="Left operand as column")
+    left_table_alias: Optional[str] = Field(None, description="Table alias for left column")
     left_value: Optional[float] = Field(None, description="Left operand as literal value")
 
     operator: ArithmeticOp = Field(..., description="Arithmetic operator")
 
     right_column: Optional[Column] = Field(None, description="Right operand as column")
+    right_table_alias: Optional[str] = Field(None, description="Table alias for right column")
     right_value: Optional[float] = Field(None, description="Right operand as literal value")
 
     alias: str = Field(..., description="Required alias for computed column")
