@@ -55,6 +55,8 @@ class Column(str, Enum):
     price_change_pct = "price_change_pct"
     previous_availability = "previous_availability"
     availability_changes = "availability_changes"
+    current_min_price = "current_min_price"
+    historical_min_price = "historical_min_price"
 
 
 class ArithmeticOp(str, Enum):
