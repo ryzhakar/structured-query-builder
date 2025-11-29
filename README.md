@@ -26,7 +26,7 @@ A Pydantic schema that allows LLMs to generate SQL queries through structured ou
 # Install dependencies
 uv sync
 
-# Run tests (64 unit tests)
+# Run tests (89 unit tests)
 uv run pytest structured_query_builder/tests/ -v
 
 # Run property-based tests (320+ random queries)
@@ -34,6 +34,7 @@ uv run pytest structured_query_builder/tests/test_hypothesis_generation.py -v
 
 # Run examples
 uv run python examples/bimodal_pricing_queries.py
+uv run python examples/phase1_queries.py  # Phase 1 enhanced queries
 ```
 
 ---
@@ -42,15 +43,16 @@ uv run python examples/bimodal_pricing_queries.py
 
 **Verified Working**:
 - ✅ Pydantic models for SQL query structure (34 models)
-- ✅ 64 unit tests passing
+- ✅ 89 unit tests passing (71 core + 18 Phase 1)
 - ✅ 320+ hypothesis property-based tests passing
 - ✅ SQL translation for all supported patterns
 - ✅ SELECT, FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY, LIMIT
-- ✅ Aggregates: COUNT, SUM, AVG, MIN, MAX
+- ✅ Aggregates: COUNT, SUM, AVG, MIN, MAX, STDDEV, VARIANCE
 - ✅ Window functions: RANK, DENSE_RANK, ROW_NUMBER, LAG, LEAD
 - ✅ CASE expressions
-- ✅ Arithmetic expressions (3 operands max)
+- ✅ Arithmetic expressions with table aliases (multi-table support)
 - ✅ Column-to-column comparisons (JOINs)
+- ✅ Temporal queries with updated_at filtering
 
 ---
 
@@ -64,7 +66,8 @@ uv run python examples/bimodal_pricing_queries.py
 - ❌ Two-level boolean logic only
 
 **Implementation Status**:
-- ⚠️ 37% use case coverage (7/19 intelligence concerns per gap analysis)
+- ✅ **68% use case coverage** (13/19 intelligence concerns - Phase 1 complete)
+- ✅ **23 working query examples** (15 bimodal + 8 Phase 1 enhanced)
 - ⚠️ Not tested with actual Vertex AI LLM integration
 - ⚠️ No production deployment validation
 
