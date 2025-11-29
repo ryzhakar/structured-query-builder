@@ -531,3 +531,29 @@ just help             # Show all available commands
 **Last Validated**: 2025-11-28
 **Last Updated**: 2025-11-28 (Gemini 3 research added)
 **Next Review**: Test with actual Gemini 3 Pro API (requires credentials)
+
+---
+
+## Testing Approach
+
+### Property-Based Testing with Hypothesis
+
+The test suite uses Hypothesis to generate random valid queries. A key implementation detail:
+
+**Homogeneous List Generation**: When generating values for `IN` operators, the strategy ensures type consistency:
+
+```python
+# IN needs a list of homogeneous types
+value_type = draw(st.sampled_from(['str', 'int', 'float']))
+if value_type == 'str':
+    value = draw(st.lists(st.text(...), ...))
+elif value_type == 'int':
+    value = draw(st.lists(st.integers(...), ...))
+```
+
+This prevents SQL type errors and validates that the schema correctly handles list-based operations.
+
+**Tests**: 320+ random queries generated and validated across multiple test cases.
+
+See `structured_query_builder/tests/test_hypothesis_generation.py` for complete implementation.
+
