@@ -99,6 +99,7 @@ class AggregateExpr(BaseModel):
     Aggregate function expression.
 
     Maps to: FUNC([DISTINCT] column) AS alias or FUNC(*) AS alias
+    Supports table aliases: AVG(my.price) for multi-table queries
     """
 
     expr_type: Literal["aggregate"] = "aggregate"
@@ -106,6 +107,7 @@ class AggregateExpr(BaseModel):
     column: Optional[Column] = Field(
         None, description="Column to aggregate; None for COUNT(*)"
     )
+    table_alias: Optional[str] = Field(None, description="Table alias for column")
     distinct: bool = Field(False, description="Whether to use DISTINCT")
     alias: str = Field(..., description="Required alias for aggregate result")
 
