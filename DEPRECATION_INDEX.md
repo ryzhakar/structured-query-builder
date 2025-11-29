@@ -205,3 +205,23 @@ structured-query-builder/
 **Documentation Cleanup Completed**: 2025-11-29
 **Audit Report**: docs/audit/REPOSITORY_AUDIT_2025-11-29.md
 **New Entry Point**: README.md
+
+---
+
+## UPDATE: 2025-11-29 (Post-Restructure)
+
+### Restored Files
+
+**AGENT_HANDOFF.md** - Restored to root and updated
+- **Old location**: `archive/planning/AGENT_HANDOFF.md`
+- **New location**: `/AGENT_HANDOFF.md` (root)
+- **Status**: ✅ CURRENT (updated with audit findings)
+- **Reason**: Required for next agent handoff
+- **Changes**: Added critical audit context, updated file references, enhanced with lessons learned
+
+**Current Root Documentation** (3 files):
+1. `README.md` - Honest project state
+2. `DEPRECATION_INDEX.md` - This file
+3. `AGENT_HANDOFF.md` - Next agent handoff (updated)
+
+All three are current and trustworthy. ✅
