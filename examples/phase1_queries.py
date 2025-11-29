@@ -111,17 +111,18 @@ def query_17_premium_gap_analysis():
         select=[
             ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
             ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+            # FIXED: Calculate AVG(my.price - comp.price) not AVG(my.price) - AVG(comp.price)
             AggregateExpr(
                 function=AggregateFunc.avg,
-                column=Column.markdown_price,
-                table_alias="my",
-                alias="avg_our_price"
-            ),
-            AggregateExpr(
-                function=AggregateFunc.avg,
-                column=Column.markdown_price,
-                table_alias="comp",
-                alias="avg_comp_price"
+                arithmetic_input=BinaryArithmetic(
+                    left_column=Column.markdown_price,
+                    left_table_alias="my",
+                    operator=ArithmeticOp.subtract,
+                    right_column=Column.markdown_price,
+                    right_table_alias="comp",
+                    alias="price_diff"  # Alias not used in aggregate context
+                ),
+                alias="avg_premium_gap"
             ),
             AggregateExpr(
                 function=AggregateFunc.count,

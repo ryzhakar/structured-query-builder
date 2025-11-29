@@ -225,9 +225,9 @@ class TestPhase1Queries:
         query = query_17_premium_gap_analysis()
         sql = translate_query(query)
 
-        # Verify multi-table aggregates
-        assert "AVG(my.markdown_price)" in sql
-        assert "AVG(comp.markdown_price)" in sql
+        # Verify nested arithmetic in aggregate: AVG(my.price - comp.price)
+        assert "AVG((my.markdown_price - comp.markdown_price))" in sql
+        assert "avg_premium_gap" in sql
         assert "INNER JOIN exact_matches" in sql
         assert "GROUP BY brand, category" in sql
 
