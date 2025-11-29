@@ -7,8 +7,8 @@
 
 # Structured Query Builder: Complete Guide
 
-**Last Updated**: 2025-11-28
-**Status**: Production-ready with documented limitations
+**Last Updated**: 2025-11-29
+**Status**: Proof-of-concept (37% use case coverage, not production-tested)
 **Version**: 0.1.0
 
 ---
