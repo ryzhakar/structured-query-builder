@@ -555,7 +555,7 @@ def query_06_cluster_floor_check():
 
 def query_20_category_price_snapshot():
     """
-    TEMPORAL SNAPSHOT: Minimum and average price by category for specific date range.
+    TEMPORAL COMPARISON: Compare current vs historical minimum prices by category.
 
     Intelligence Model Mapping:
         Archetype: HISTORIAN
@@ -564,53 +564,94 @@ def query_20_category_price_snapshot():
         Query Name: "The Minimum Viable Price Lift"
 
     Business Value:
-        Tracks market floor movement over time.
-        Run weekly to detect price inflation: "Did the cheapest TV increase from $200 to $250?"
+        Detects category floor price increases over 6-month periods.
+        "Did the cheapest TV increase from $200 to $250? That's a 25% floor lift."
 
-    Pattern: Snapshot + Application-Layer Comparison
-        1. Run this query with date range = last week → save results
-        2. Run this query with date range = this week → save results
-        3. Compare in application layer
+    Pattern: Self-join on date ranges
+        - Current: last 7 days
+        - Historical: 6 months ago
+        - Calculate percentage increase in minimum prices
 
-    This is more practical than complex temporal self-joins.
+    Action Trigger:
+        If price_lift_pct > 0.15 → Safe to raise entry-level product prices
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.category)),
-            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
-            AggregateExpr(
-                function=AggregateFunc.min,
-                column=Column.markdown_price,
-                alias="min_price"
-            ),
-            AggregateExpr(
-                function=AggregateFunc.avg,
-                column=Column.markdown_price,
-                alias="avg_price"
-            ),
-            AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="product_count"
+            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="prices")),
+            ColumnExpr(source=QualifiedColumn(column=Column.current_min_price, table_alias="prices")),
+            ColumnExpr(source=QualifiedColumn(column=Column.historical_min_price, table_alias="prices")),
+            # Calculate price lift percentage: ((current - historical) / historical)
+            CompoundArithmetic(
+                inner_left_column=Column.current_min_price,
+                inner_left_table_alias="prices",
+                inner_operator=ArithmeticOp.subtract,
+                inner_right_column=Column.historical_min_price,
+                inner_right_table_alias="prices",
+                outer_operator=ArithmeticOp.divide,
+                outer_column=Column.historical_min_price,
+                outer_table_alias="prices",
+                alias="price_lift_pct"
             ),
         ],
-        from_=FromClause(table=Table.product_offers),
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
-                    conditions=[
+        from_=FromClause(
+            derived=DerivedTable(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="current")),
+                    AggregateExpr(
+                        function=AggregateFunc.min,
+                        column=Column.markdown_price,
+                        table_alias="current",
+                        alias="current_min_price"
+                    ),
+                    AggregateExpr(
+                        function=AggregateFunc.min,
+                        column=Column.markdown_price,
+                        table_alias="historical",
+                        alias="historical_min_price"
+                    ),
+                ],
+                from_table=Table.product_offers,
+                table_alias="current",
+                joins=[
+                    JoinSpec(
+                        join_type=JoinType.inner,
+                        table=Table.product_offers,
+                        table_alias="historical",
+                        on_conditions=[
+                            ConditionGroup(
+                                conditions=[
+                                    ColumnComparison(
+                                        left_column=QualifiedColumn(column=Column.category, table_alias="current"),
+                                        operator=ComparisonOp.eq,
+                                        right_column=QualifiedColumn(column=Column.category, table_alias="historical")
+                                    )
+                                ],
+                                logic=LogicOp.and_
+                            )
+                        ]
+                    )
+                ],
+                where=WhereL0(
+                    between_conditions=[
+                        # Current: last 7 days
                         BetweenCondition(
-                            column=QualifiedColumn(column=Column.updated_at),
-                            low="2025-11-22",  # Parameterize in production
-                            high="2025-11-29"
+                            column=QualifiedColumn(column=Column.updated_at, table_alias="current"),
+                            low="2025-11-22",  # Now - 7 days (parameterize in production)
+                            high="2025-11-29"   # Now
+                        ),
+                        # Historical: 6 months ago
+                        BetweenCondition(
+                            column=QualifiedColumn(column=Column.updated_at, table_alias="historical"),
+                            low="2025-05-22",  # Now - 6 months - 7 days
+                            high="2025-05-29"  # Now - 6 months
                         ),
                     ],
-                    logic=LogicOp.and_
-                )
-            ],
-            group_logic=LogicOp.and_
+                    group_logic=LogicOp.and_
+                ),
+                group_by=GroupByClause(columns=[Column.category]),
+                alias="prices"
+            )
         ),
-        group_by=GroupByClause(columns=[Column.category, Column.vendor]),
         order_by=OrderByClause(
             items=[
                 OrderByItem(column=Column.category, direction=Direction.asc),

@@ -256,16 +256,19 @@ class TestPhase1Queries:
         assert "LIMIT 50" in sql
 
     def test_query_20_price_snapshot(self):
-        """Test Q20: Category Price Snapshot (Temporal)."""
+        """Test Q20: Category Price Snapshot (temporal comparison with self-join)."""
         from examples.phase1_queries import query_20_category_price_snapshot
 
         query = query_20_category_price_snapshot()
         sql = translate_query(query)
 
-        # Verify temporal filtering
-        assert "updated_at BETWEEN" in sql
-        assert "MIN(markdown_price)" in sql
-        assert "AVG(markdown_price)" in sql
+        # Verify temporal self-join pattern
+        assert "current.updated_at BETWEEN" in sql
+        assert "historical.updated_at BETWEEN" in sql
+        assert "MIN(current.markdown_price)" in sql
+        assert "MIN(historical.markdown_price)" in sql
+        assert "INNER JOIN product_offers AS historical" in sql
+        assert "price_lift_pct" in sql
 
     def test_query_21_promo_erosion(self):
         """Test Q21: Promo Erosion Index (Unmatched)."""
