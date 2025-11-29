@@ -1,3 +1,28 @@
+# ⚠️ DEPRECATED - DO NOT TRUST
+
+**STATUS**: This document was created in commit 01 (2025-11-28 11:34:43) and has NEVER been updated.
+
+**CRITICAL ISSUES**:
+1. Claims "Production Ready" - CONTRADICTED by later findings
+2. Claims "All pricing analyst use cases are fully supported" - FALSE (37% actual)
+3. Assessment based on pre-implementation assumptions, not actual testing
+4. Never updated after fundamental schema limitations discovered
+
+**WHAT CHANGED AFTER THIS DOC**:
+- Commit 08: Discovered schema couldn't do JOINs (fundamental flaw)
+- Commit 09-10: Had to fix schema to support column-to-column comparisons
+- Commit 14: Gap analysis revealed only 37% coverage, not "all use cases"
+- Never tested with actual Vertex AI LLM (per GUIDE.md)
+
+**SEE INSTEAD**:
+- GUIDE.md (honest assessment: "not production-ready without LLM testing")
+- REAL_CONSTRAINTS.md (actual Vertex AI constraints)
+- CRITICAL_FINDINGS.md (what the schema actually can't do)
+
+**ORIGINAL CONTENT BELOW** (frozen at commit 01, overstated claims):
+
+---
+
 # Google Vertex AI Structured Outputs: Findings & Recommendations
 
 ## Executive Summary

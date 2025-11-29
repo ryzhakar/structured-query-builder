@@ -1,3 +1,22 @@
+# ⚠️ DEPRECATED - PREDATES DISCOVERY OF LIMITATIONS
+
+**STATUS**: Created in commit 02, before schema limitations were discovered.
+
+**ISSUE**: This document was written before:
+- Commit 08: Discovery that schema couldn't support bimodal queries as specified
+- Commit 09: Addition of ColumnComparison to fix JOIN limitations
+- Commit 14: Gap analysis showing only 37% coverage
+
+**RECOMMENDATION**: Cross-reference claims with post-fix documentation.
+
+**SEE INSTEAD**: 
+- examples/bimodal_pricing_queries.py (actual working implementations)
+- BIMODAL_INTELLIGENCE_GAP_ANALYSIS.md (honest coverage assessment)
+
+**ORIGINAL CONTENT BELOW** (predates schema fixes, may be outdated):
+
+---
+
 # Top 10 Pricing Analyst Queries: Complete Documentation
 
 **Purpose**: Document real-world pricing analyst queries with full context, natural language requests, natural SQL, Pydantic models, and verification.

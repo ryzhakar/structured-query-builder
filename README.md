@@ -1,388 +1,200 @@
 # Structured Query Builder
 
-A Pydantic-based SQL query schema designed for LLM-powered natural language to SQL translation. Built specifically for Google Vertex AI structured outputs but works with any LLM provider supporting structured generation.
+A Pydantic-based SQL query schema for LLM-powered natural language to SQL translation.
 
-## Overview
+## ⚠️ IMPORTANT: Documentation Restructuring Notice
 
-This library provides a **correctness-by-construction** approach to SQL query generation. Instead of parsing SQL strings or validating generated queries, the Pydantic models make it impossible to represent invalid SQL structures.
+**This repository underwent major documentation cleanup on 2025-11-29.**
 
-### Key Features
+**Previous "production ready" claims have been deprecated.** See `docs/audit/REPOSITORY_AUDIT_2025-11-29.md` for details.
 
-✅ **LLM-Compatible Design**: No recursive types, explicit depth limits
-✅ **Provider Agnostic**: Works with Google Vertex AI, OpenAI, Anthropic, etc.
-✅ **Discriminated Unions**: Clear type markers for LLM guidance
-✅ **Enum-Based Schema**: Explicit tables, columns, operators, and functions
-✅ **Comprehensive SQL Support**: JOINs, subqueries, window functions, CASE, etc.
-✅ **Production Ready**: Fully tested with 53 unit tests, 100% coverage
+**Status**: Functional proof-of-concept with known limitations. Not production-tested with actual LLM.
 
-### Design Principles
+---
 
-1. **Single Path**: When multiple SQL constructs achieve the same result, choose one
-2. **Impact Over Power**: Match SQL's computational impact, not full expressive power
-3. **Explicit Depth**: No infinite recursion; explicit L0/L1 models for nesting
-4. **Correctness by Construction**: Invalid queries cannot be represented
-5. **90% Rule**: If simpler constructs cover 90% of cases, prefer them
+## What This Is
 
-## Installation
+A Pydantic schema that allows LLMs to generate SQL queries through structured outputs instead of string generation. This provides type safety and prevents SQL injection.
 
-```bash
-# With uv (recommended)
-uv add pydantic langchain langchain-google-vertexai
+**Design Philosophy**: No recursive types, explicit depth limits, discriminated unions - all optimized for LLM structured output compatibility.
 
-# With pip
-pip install pydantic langchain langchain-google-vertexai
-```
+---
 
 ## Quick Start
 
-### Basic Usage
+```bash
+# Install dependencies
+uv sync
 
-```python
-from langchain_google_vertexai import ChatVertexAI
-from langchain_core.prompts import ChatPromptTemplate
-from structured_query_builder import Query
-from structured_query_builder.translator import translate_query
+# Run tests (64 unit tests)
+uv run pytest structured_query_builder/tests/ -v
 
-# Initialize LLM with structured output
-llm = ChatVertexAI(model="gemini-1.5-pro", temperature=0)
-structured_llm = llm.with_structured_output(Query)
+# Run property-based tests (320+ random queries)
+uv run pytest structured_query_builder/tests/test_hypothesis_generation.py -v
 
-# Create prompt template
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a SQL query builder for e-commerce pricing analysis."),
-    ("user", "{user_request}")
-])
-
-# Generate query from natural language
-chain = prompt | structured_llm
-query = chain.invoke({"user_request": "What's the average price by category?"})
-
-# Translate to SQL
-sql = translate_query(query)
-print(sql)
+# Run examples
+uv run python examples/bimodal_pricing_queries.py
 ```
 
-**Output**:
-```sql
-SELECT category,
-       AVG(regular_price) AS avg_price
-FROM product_offers
-GROUP BY category
-```
+---
 
-### Manual Query Construction
+## What Actually Works ✅
 
-You can also build queries programmatically:
+**Verified Working**:
+- ✅ Pydantic models for SQL query structure (34 models)
+- ✅ 64 unit tests passing
+- ✅ 320+ hypothesis property-based tests passing
+- ✅ SQL translation for all supported patterns
+- ✅ SELECT, FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY, LIMIT
+- ✅ Aggregates: COUNT, SUM, AVG, MIN, MAX
+- ✅ Window functions: RANK, DENSE_RANK, ROW_NUMBER, LAG, LEAD
+- ✅ CASE expressions
+- ✅ Arithmetic expressions (3 operands max)
+- ✅ Column-to-column comparisons (JOINs)
 
-```python
-from structured_query_builder import *
+---
 
-query = Query(
-    select=[
-        ColumnExpr(source=QualifiedColumn(column=Column.category)),
-        AggregateExpr(
-            function=AggregateFunc.avg,
-            column=Column.regular_price,
-            alias="avg_price"
-        )
-    ],
-    from_=FromClause(table=Table.product_offers),
-    group_by=GroupByClause(columns=[Column.category]),
-    order_by=OrderByClause(
-        items=[OrderByItem(column=Column.regular_price, direction=Direction.desc)]
-    ),
-    limit=LimitClause(limit=10)
-)
+## Known Limitations ⚠️
 
-sql = translate_query(query)
-```
+**By Design**:
+- ❌ No CTEs (use subqueries instead)
+- ❌ No correlated subqueries (use window functions)
+- ❌ Limited nesting depth (2 levels explicit)
+- ❌ Limited arithmetic complexity (3 operands max)
+- ❌ Two-level boolean logic only
 
-## Supported SQL Features
+**Implementation Status**:
+- ⚠️ 37% use case coverage (7/19 intelligence concerns per gap analysis)
+- ⚠️ Not tested with actual Vertex AI LLM integration
+- ⚠️ No production deployment validation
 
-### ✅ Fully Supported
+See `docs/technical/REAL_CONSTRAINTS.md` for detailed limitations.
 
-- **SELECT**: Column selection, aliases
-- **Computed Columns**: Binary and compound arithmetic
-- **Aggregates**: COUNT, SUM, AVG, MIN, MAX, COUNT(DISTINCT)
-- **Window Functions**: RANK, DENSE_RANK, ROW_NUMBER, LAG, LEAD + aggregate windows
-- **CASE Expressions**: Multi-branch conditional logic
-- **FROM**: Single table, derived tables (subqueries)
-- **JOINs**: INNER, LEFT (with aliases for self-joins)
-- **WHERE**: Two-level boolean logic, scalar subqueries, BETWEEN
-- **GROUP BY**: Multiple columns
-- **HAVING**: Filters on aggregates
-- **ORDER BY**: Multiple columns, ASC/DESC, NULLS FIRST/LAST
-- **LIMIT/OFFSET**: Pagination
-
-### ❌ Intentionally Excluded
-
-- **CTEs**: Use subqueries instead (simpler, single pattern)
-- **FULL/CROSS JOINs**: Performance risk, not needed for use case
-- **Correlated Subqueries**: Use window functions instead
-- **UNION/INTERSECT/EXCEPT**: Handle at application layer
-- **Recursive Queries**: No hierarchical data patterns
-- **Unlimited Nesting**: Explicit L0/L1 depth limits
-
-See [VERTEXAI_FINDINGS.md](VERTEXAI_FINDINGS.md) for detailed rationale.
+---
 
 ## Architecture
 
-### Clause-Based Structure
-
-The schema mirrors SQL's clause structure:
-
 ```
-Query
-├── SELECT (list of SelectExpr)
-│   ├── ColumnExpr
-│   ├── BinaryArithmetic
-│   ├── CompoundArithmetic
-│   ├── AggregateExpr
-│   ├── WindowExpr
-│   └── CaseExpr
-├── FROM (FromClause)
-│   ├── Table
-│   ├── DerivedTable
-│   └── JoinSpec[]
-├── WHERE (WhereL1)
-│   ├── ConditionGroup[]
-│   ├── BetweenCondition[]
-│   └── SubqueryCondition[]
-├── GROUP BY (GroupByClause)
-├── HAVING (HavingClause)
-├── ORDER BY (OrderByClause)
-└── LIMIT (LimitClause)
+Query (root)
+├── SELECT: list[SelectExpr]
+│   └── Union of: Column | Arithmetic | Aggregate | Window | Case
+├── FROM: FromClause
+│   ├── table: Table
+│   └── joins: list[JoinSpec]
+├── WHERE: WhereL1 (optional)
+│   └── groups: list[ConditionGroup]
+├── GROUP BY: GroupByClause (optional)
+├── HAVING: HavingClause (optional)
+├── ORDER BY: OrderByClause (optional)
+└── LIMIT: LimitClause (optional)
 ```
 
-### Discriminated Unions
+**Key Design Decisions**:
+1. **No Recursion**: Explicit L0/L1 depth models instead
+2. **Discriminated Unions**: `expr_type` literal field for clear type markers
+3. **Enum-Based**: Tables, columns, operators as enums (type-safe)
+4. **Clause-Based**: Mirrors SQL structure (intuitive)
 
-Expression types use `expr_type` as discriminator:
-
-```python
-class ColumnExpr(BaseModel):
-    expr_type: Literal["column"] = "column"
-    # ...
-
-class AggregateExpr(BaseModel):
-    expr_type: Literal["aggregate"] = "aggregate"
-    # ...
-
-SelectExpr = Union[ColumnExpr, BinaryArithmetic, ...]
-```
-
-This allows LLMs to clearly signal which type they're generating.
-
-### Explicit Depth Control
-
-Instead of recursive types (which LLMs can't handle), we use explicit levels:
-
-```python
-# Level 0: No subqueries
-class WhereL0(BaseModel):
-    groups: list[ConditionGroup]
-
-# Level 1: Can contain subqueries with L0 WHERE
-class WhereL1(BaseModel):
-    groups: list[ConditionGroup]
-    subquery_conditions: list[SubqueryCondition]  # Contains WhereL0
-
-class SubqueryCondition(BaseModel):
-    column: QualifiedColumn
-    operator: ComparisonOp
-    subquery: ScalarSubquery  # Has WhereL0 internally
-```
-
-Maximum nesting: exactly 1 level.
-
-## Use Cases
-
-### Pricing Analyst Workflows
-
-This schema was designed for e-commerce pricing analysts. All common patterns are supported:
-
-#### 1. Price Comparison Across Vendors
-```python
-"Show our prices vs. Amazon for the same products"
-# → Self-join with table aliases
-```
-
-#### 2. Discount Analysis
-```python
-"Calculate discount percentage for markdown products"
-# → Compound arithmetic: (regular - markdown) / regular * 100
-```
-
-#### 3. Competitive Ranking
-```python
-"Rank vendors by price within each category"
-# → Window function with PARTITION BY
-```
-
-#### 4. Trend Analysis
-```python
-"Show week-over-week price changes"
-# → LAG window function
-```
-
-#### 5. Price Segmentation
-```python
-"Classify products as cheap, medium, or expensive"
-# → CASE expression
-```
-
-See [examples/pricing_analyst_queries.py](examples/pricing_analyst_queries.py) for full implementations.
-
-## Testing
-
-### Run Tests
-
-```bash
-# Unit tests (models and translator)
-uv run pytest structured_query_builder/tests/test_models.py -v
-uv run pytest structured_query_builder/tests/test_translator.py -v
-
-# All tests
-uv run pytest structured_query_builder/tests/ -v
-
-# Exploration script
-uv run python explore_vertexai.py
-```
-
-### Integration Tests with Vertex AI
-
-Requires Google Cloud credentials:
-
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
-export GOOGLE_CLOUD_PROJECT=your-project-id
-
-uv run pytest structured_query_builder/tests/test_vertexai_integration.py -v
-```
-
-## Schema Customization
-
-### Adding Tables and Columns
-
-Edit `structured_query_builder/enums.py`:
-
-```python
-class Table(str, Enum):
-    product_offers = "product_offers"
-    # Add your table:
-    customers = "customers"
-
-class Column(str, Enum):
-    # ... existing columns ...
-    # Add your columns:
-    customer_name = "customer_name"
-    email = "email"
-```
-
-### Adding Operators or Functions
-
-```python
-class AggregateFunc(str, Enum):
-    count = "COUNT"
-    # Add custom aggregate:
-    stddev = "STDDEV"
-```
-
-The Pydantic models automatically validate against these enums.
-
-## Performance
-
-### Benchmarks (MacBook M1 Pro)
-
-- Model construction: <1ms
-- JSON serialization: 0.5-2ms (depends on complexity)
-- SQL translation: 0.5-3ms
-- Schema generation: <1ms (cached)
-
-### Token Usage (Approximate)
-
-- **Simple query**: 300-500 tokens
-- **Medium query**: 500-1000 tokens
-- **Complex query**: 1000-2000 tokens
-
-Cost with Gemini Pro: ~$0.001-0.005 per query generation.
-
-## Limitations
-
-See [VERTEXAI_FINDINGS.md](VERTEXAI_FINDINGS.md) for detailed discussion of:
-
-- Design tradeoffs (CTEs, correlated subqueries, etc.)
-- Maximum nesting depth (2 levels explicit)
-- Arithmetic complexity (3 operands max)
-- Boolean logic (2-level grouping)
-
-These are **intentional design choices** to maintain simplicity and LLM compatibility.
-
-## Examples
-
-Check the `examples/` directory:
-
-- `basic_queries.py` - Simple SELECT, WHERE, aggregates
-- `pricing_analyst_queries.py` - Real-world pricing analysis patterns
-- `advanced_queries.py` - Window functions, subqueries, self-joins
-- `vertexai_integration.py` - End-to-end LLM integration
+---
 
 ## Documentation
 
-- **[VERTEXAI_FINDINGS.md](VERTEXAI_FINDINGS.md)** - Comprehensive findings from Vertex AI testing
-- **[examples/](examples/)** - Usage examples
-- **[query_schema.json](query_schema.json)** - Full JSON schema export
+### Current State
+- **docs/audit/** - Repository audit and honest assessment
+  - `REPOSITORY_AUDIT_2025-11-29.md` - Full historical analysis
+  - `CRITICAL_FINDINGS.md` - Known issues and limitations
+  
+- **docs/guides/** - User guides
+  - `GUIDE.md` - Comprehensive usage guide
+  
+- **docs/technical/** - Technical documentation
+  - `REAL_CONSTRAINTS.md` - Vertex AI constraints
+  - `GITHUB_ISSUES_ANALYSIS.md` - 20+ GitHub issues analyzed
+  - `GEMINI_3_RESEARCH.md` - Gemini 3 capabilities
 
-## Contributing
+### Deprecated (Archived)
+- **archive/deprecated-claims/** - Stale "production ready" claims from commit 01
+  - ⚠️ DO NOT TRUST - Never updated after limitations discovered
+  - Preserved with warning prefixes for historical record
 
-### Project Structure
+See `DEPRECATION_INDEX.md` for complete mapping.
+
+---
+
+## Project Structure
 
 ```
 structured-query-builder/
-├── structured_query_builder/
-│   ├── enums.py          # Enum definitions
-│   ├── expressions.py    # SELECT expressions
-│   ├── clauses.py        # WHERE, FROM, GROUP BY, etc.
-│   ├── query.py          # Main Query model
-│   ├── translator.py     # SQL translation
-│   └── tests/
-│       ├── test_models.py
-│       ├── test_translator.py
-│       └── test_vertexai_integration.py
-├── explore_vertexai.py   # Exploration script
-├── examples/             # Usage examples
-├── README.md
-└── VERTEXAI_FINDINGS.md
+├── structured_query_builder/    # Core package
+│   ├── enums.py                # Tables, columns, operators
+│   ├── expressions.py          # SELECT expressions
+│   ├── clauses.py              # WHERE, FROM, etc.
+│   ├── query.py                # Main Query model
+│   ├── translator.py           # Pydantic → SQL
+│   └── tests/                  # 64 unit tests + hypothesis tests
+├── examples/                    # Working query examples
+├── docs/                        # Organized documentation
+│   ├── audit/                  # Audit reports
+│   ├── guides/                 # User guides
+│   └── technical/              # Technical docs
+└── archive/                     # Deprecated/historical docs
 ```
 
-### Development Setup
+---
 
+## Contributing
+
+### Running Tests
 ```bash
-# Clone repo
-git clone <repo-url>
-cd structured-query-builder
+# All tests
+uv run pytest structured_query_builder/tests/ -v
 
-# Install with uv
-uv sync
-
-# Run tests
-uv run pytest
-
-# Run exploration
-uv run python explore_vertexai.py
+# Specific test files
+uv run pytest structured_query_builder/tests/test_models.py -v
+uv run pytest structured_query_builder/tests/test_translator.py -v
+uv run pytest structured_query_builder/tests/test_hypothesis_generation.py -v
 ```
+
+### Test Coverage
+- 31 model validation tests
+- 22 SQL translation tests
+- 11 column comparison tests
+- 320+ hypothesis property-based tests
+
+---
+
+## Honest Assessment
+
+**What this project is**:
+- ✅ Functional proof-of-concept for LLM-powered SQL generation
+- ✅ Well-tested Pydantic schema with comprehensive test suite
+- ✅ Working implementation of core SQL patterns
+- ✅ Good foundation for further development
+
+**What this project is NOT**:
+- ❌ Production-ready (not tested with actual LLM)
+- ❌ Feature-complete (37% use case coverage)
+- ❌ Extensively validated in real-world scenarios
+- ❌ Performance-optimized for scale
+
+**Recommendation**: Suitable for evaluation and further development. Requires LLM integration testing and gap filling before production use.
+
+---
+
+## History
+
+**2025-11-28**: Initial implementation (commit 01)
+**2025-11-28**: Schema fixes for JOIN support (commits 09-10)
+**2025-11-29**: Documentation restructuring and honest assessment
+
+See `docs/audit/REPOSITORY_AUDIT_2025-11-29.md` for complete history including discovery of limitations and confession of prior overclaiming.
+
+---
 
 ## License
 
 [Your License Here]
 
-## References
-
-- **Inspiration**: [Turning Words into SQL](https://blog.streamlit.io/turning-words-into-sql/) by Ryan Klapper
-- **Pydantic Docs**: https://docs.pydantic.dev/
-- **LangChain Docs**: https://python.langchain.com/docs/
-- **Vertex AI**: https://cloud.google.com/vertex-ai/docs
-
 ---
 
-**Built for real-world SQL generation with LLMs.**
-**Production-tested. Thoroughly documented. Ready to deploy.**
+**Built with honesty. Documented transparently. Use with awareness of limitations.**
