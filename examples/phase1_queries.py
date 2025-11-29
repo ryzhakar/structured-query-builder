@@ -355,6 +355,287 @@ def query_19_loss_leader_hunter():
 
 
 # =============================================================================
+# ARCHETYPE 3: HISTORIAN - Trend Analysis (3 new queries)
+# =============================================================================
+
+
+def query_20_category_price_snapshot():
+    """
+    TEMPORAL SNAPSHOT: Minimum and average price by category for specific date range.
+
+    Intelligence Model Mapping:
+        Archetype: HISTORIAN
+        Concern: Inflation Tracking
+        Variant: Unmatched Execution
+        Query Name: "The Minimum Viable Price Lift"
+
+    Business Value:
+        Tracks market floor movement over time.
+        Run weekly to detect price inflation: "Did the cheapest TV increase from $200 to $250?"
+
+    Pattern: Snapshot + Application-Layer Comparison
+        1. Run this query with date range = last week → save results
+        2. Run this query with date range = this week → save results
+        3. Compare in application layer
+
+    This is more practical than complex temporal self-joins.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+            AggregateExpr(
+                function=AggregateFunc.min,
+                column=Column.markdown_price,
+                alias="min_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.markdown_price,
+                alias="avg_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="product_count"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        BetweenCondition(
+                            column=QualifiedColumn(column=Column.updated_at),
+                            low="2025-11-22",  # Parameterize in production
+                            high="2025-11-29"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.category, Column.vendor]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
+def query_21_promo_erosion_index():
+    """
+    UNMATCHED: Category-wide average price tracking for promotion detection.
+
+    Intelligence Model Mapping:
+        Archetype: HISTORIAN
+        Concern: Promo Detection
+        Variant: Unmatched Approximation
+        Query Name: "The Category Erosion Index"
+
+    Business Value:
+        Detect category-wide price drops indicating competitor promotions.
+        "Did the entire Kitchen category drop 5% this week?"
+
+    Action Trigger:
+        If avg_price drops > 5% → Launch counter-promotion campaign
+        If avg_discount_depth increases significantly → Competitor is running sale
+
+    Pattern:
+        Run weekly, compare results to detect erosion events.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.markdown_price,
+                alias="avg_current_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.regular_price,
+                alias="avg_regular_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="product_count"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.eq,
+                            value="Them"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.category, Column.vendor]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
+def query_22_brand_presence_tracking():
+    """
+    UNMATCHED: Track competitor brand assortment size over time.
+
+    Intelligence Model Mapping:
+        Archetype: HISTORIAN
+        Concern: Churn Analysis
+        Variant: Unmatched Approximation
+        Query Name: "The Brand Volume Drop"
+
+    Business Value:
+        Detect when competitors reduce or expand specific brand offerings.
+        "Their Dyson offer count dropped 40% - they may be losing the vendor relationship"
+
+    Action Trigger:
+        If brand_count drops > 30% → Contact vendor for potential exclusive deal
+        If brand_count increases significantly → Competitor secured better terms
+
+    Pattern:
+        Run weekly, track count changes to detect assortment churn.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="offer_count"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.sum,
+                column=Column.availability,
+                alias="in_stock_count"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.markdown_price,
+                alias="avg_price"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.eq,
+                            value="Them"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.brand, Column.vendor]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.brand, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
+# =============================================================================
+# ARCHETYPE 4: MERCENARY - Perception & Psychology (1 new query)
+# =============================================================================
+
+
+def query_23_discount_depth_distribution():
+    """
+    UNMATCHED: Analyze discount depth patterns across categories.
+
+    Intelligence Model Mapping:
+        Archetype: MERCENARY
+        Concern: Optical Dominance
+        Variant: Unmatched Approximation
+        Query Name: "The Discount Depth Distribution"
+
+    Business Value:
+        Compare average discount percentages to understand perception.
+        "Their average discount is 20%, ours is 10% - we look stingy"
+
+    Action Trigger:
+        If our_avg_discount < competitor_avg_discount by >5% → Increase markdown depth
+        If competitor uses deeper discounts → Adjust anchor prices to match optical value
+
+    Uses:
+        Statistical functions (STDDEV) to detect discount consistency.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="product_count"
+            ),
+            # Average discount depth
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.markdown_price,
+                alias="avg_current_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.regular_price,
+                alias="avg_regular_price"
+            ),
+            # Price volatility using new statistical functions
+            AggregateExpr(
+                function=AggregateFunc.stddev,
+                column=Column.markdown_price,
+                alias="price_volatility"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.is_markdown),
+                            operator=ComparisonOp.eq,
+                            value=True
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.category, Column.vendor]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
+# =============================================================================
 # Main execution
 # =============================================================================
 
@@ -363,10 +644,18 @@ if __name__ == "__main__":
     print("=" * 80)
 
     queries = [
+        # ENFORCER (2 queries)
         ("Q16: MAP Violations (Unmatched)", query_16_map_violations_unmatched),
         ("Q17: Premium Gap Analysis (Matched)", query_17_premium_gap_analysis),
+        # PREDATOR (2 queries)
         ("Q18: Supply Chain Failure Detector (Unmatched)", query_18_supply_chain_failure_detector),
         ("Q19: Loss-Leader Hunter (Matched)", query_19_loss_leader_hunter),
+        # HISTORIAN (3 queries)
+        ("Q20: Category Price Snapshot (Temporal)", query_20_category_price_snapshot),
+        ("Q21: Promo Erosion Index (Unmatched)", query_21_promo_erosion_index),
+        ("Q22: Brand Presence Tracking (Unmatched)", query_22_brand_presence_tracking),
+        # MERCENARY (1 query)
+        ("Q23: Discount Depth Distribution (Unmatched)", query_23_discount_depth_distribution),
     ]
 
     for name, query_func in queries:
