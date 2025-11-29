@@ -1,0 +1,47 @@
+Commit: e45111a257f4adc788e70e6dd7424c364e9c2cd5
+Author: Claude <noreply@anthropic.com>
+Date: 2025-11-28 15:26:01 +0000
+Subject: Comprehensive GitHub issues analysis and blog claims validation
+
+Message:
+Research Scope:
+- Analyzed 20+ GitHub issues across googleapis/python-genai
+- Cross-compared Google blog post claims against production reality
+- Identified critical discrepancies between marketing and reality
+
+Key Findings:
+1. Blog claims "JSON Schema support" - Reality: limited subset only
+2. Blog claims "Pydantic works out-of-the-box" - Reality: many patterns break
+3. Blog claims "anyOf support" - Reality: unstable, raises ValueError
+4. CRITICAL: Gemini 2.5 has breaking regressions (structured outputs fail)
+5. Our schema design successfully avoids ALL identified failure modes
+
+Critical Issues Documented:
+- Issue #460: Dictionaries not supported
+- Issue #447: Union types raise ValueError
+- Issue #1205: Recursive models crash with RecursionError
+- Issue #706 (p1): Gemini 2.5 breaks structured outputs + function calling
+- Issue #637: Gemini 2.5 structured output parsing returns None
+- Issue #626: max_output_tokens broken on Gemini 2.5
+- Issue #660: "Too many states" error with complex schemas
+- Issue #1039: Token limit exceeded returns None
+
+Design Validation:
+✅ No recursive types (WhereL0/L1 pattern)
+✅ No dictionaries with arbitrary keys
+✅ No Union types (use discriminated unions instead)
+✅ String-only enums
+✅ No sets
+
+Prescriptive Upgrade Plan:
+1. Target Gemini 2.0 explicitly (avoid 2.5 regressions)
+2. Validate schema with actual Vertex AI
+3. Add token budget monitoring
+4. Test all bimodal queries with hypothesis
+
+New Files:
+- GITHUB_ISSUES_ANALYSIS.md: Comprehensive 20+ issue analysis
+- REAL_CONSTRAINTS.md: Updated with GitHub findings summary
+
+Sources: 20+ GitHub issues, official blog post, Google AI docs
+

@@ -1,0 +1,39 @@
+Commit: afa886b37afaeeca74ec0dcb5c4e744712a13136
+Author: Claude <noreply@anthropic.com>
+Date: 2025-11-28 19:37:20 +0000
+Subject: Add just command runner for single-command validation
+
+Message:
+Features:
+- just validate: Complete validation suite (recommended)
+- just test: Run 60 unit tests
+- just test-hypothesis: Run 320+ property-based tests
+- just examples: Run 6 realistic pricing queries
+- just schema-metrics: Measure schema size and token consumption
+- just smoke: Quick smoke test for CI/CD
+- just clean: Remove generated files
+- just stats: Show project statistics
+- just help: Show all available commands
+
+Installation:
+- Automatically installs just command runner (1.43.1)
+- Uses .venv for Python environment
+- All recipes use relative paths (portable)
+
+Single-Command Validation:
+$ just validate
+
+Expected Output:
+✅ Unit tests: 60 tests passing
+✅ Hypothesis: 320+ random queries validated
+✅ Examples: 6 pricing queries executed
+✅ Schema: 20.9KB (~5,200 tokens)
+✅ Compatible with Vertex AI Gemini 2.0
+
+Validation completed in <5 seconds total.
+
+Purpose:
+- Transparent proof-of-work for users
+- Robust, repeatable validation
+- No secrets, everything verifiable
+

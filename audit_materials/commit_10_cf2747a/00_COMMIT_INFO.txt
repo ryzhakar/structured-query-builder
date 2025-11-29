@@ -1,0 +1,28 @@
+Commit: cf2747a7b93e321fcb981789bf2de434a1b4bf58
+Author: Claude <noreply@anthropic.com>
+Date: 2025-11-28 20:27:40 +0000
+Subject: Update hypothesis tests for new JoinSpec structure
+
+Message:
+PROBLEM:
+- Hypothesis tests were generating JoinSpec with old structure
+- Used left_column/right_column instead of on_conditions
+- Caused ValidationError when generating random queries
+
+FIX:
+- Updated from_clause_strategy() in test_hypothesis_generation.py
+- Changed to use on_conditions with ConditionGroup
+- Uses ColumnComparison for JOIN conditions
+- Maintains same random generation behavior
+
+PROOF-OF-WORK:
+✅ All 7 hypothesis tests passing
+✅ 320+ random queries validated
+✅ Full validation suite passing
+
+VALIDATION RESULTS:
+- Unit tests: 64 tests (31 models + 22 translator + 11 column comparison) ✅
+- Hypothesis: 320+ random queries ✅
+- Examples: 6 pricing queries ✅
+- Schema: Compatible with Vertex AI ✅
+

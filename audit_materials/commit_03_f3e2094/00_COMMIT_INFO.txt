@@ -1,0 +1,18 @@
+Commit: f3e20944f62b6b8dc551364eeee00e63fb2c632a
+Author: Claude <noreply@anthropic.com>
+Date: 2025-11-28 15:18:11 +0000
+Subject: Add exact_matches table to data model
+
+Message:
+- Added exact_matches table to Table enum
+- Added source_id and target_id columns to Column enum
+- Added availability column for stock tracking
+- Documented lexicographic ordering convention:
+  * source_id < target_id (lexicographically)
+  * No duplicate mappings (if A:B exists, B:A does not)
+  * Convention enforced by ETL, not database constraints
+
+Validation:
+- All 60 existing tests pass (models, translator, hypothesis)
+- Schema remains compatible with Vertex AI structured outputs
+

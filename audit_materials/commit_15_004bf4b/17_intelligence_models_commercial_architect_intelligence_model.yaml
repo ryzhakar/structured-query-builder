@@ -1,0 +1,206 @@
+commercial_architect_intelligence_model:
+  meta:
+    role: "Commercial Architect (The One-Man Army)"
+    capability: "Infinite Bandwidth / Zero Latency"
+    data_context: "3rd-Party Competitive SaaS (Air-Gapped from Internal ERP)"
+    purpose: "Total Strategic Dominance via Exhaustive Data Interrogation"
+
+  # ============================================================================
+  # DOMAIN 1: RANGE ARCHITECTURE (The "What Do We Sell?" Strategy)
+  # ============================================================================
+  # The Architect uses the data to design the perfect catalog, ensuring they
+  # strictly differentiate from or strictly mirror the competition.
+
+  concern_A_assortment_overlap_and_exclusivity:
+    universal_reasoning: |
+      "I need to know exactly how unique my business is.
+      If I am selling the same things as them, I am a commodity.
+      If I am selling different things, I am a destination."
+
+    matched_execution:
+      query_name: "The Commoditization Coefficient"
+      logic: |
+        1. Select Count(Matches) / Count(Total_My_Assortment).
+        2. Select Count(Matches) / Count(Total_Competitor_Assortment).
+      insight: |
+        "I share 80% of my range with them, but they only share 10% of their range with me.
+        I am a subset of their business. I have no defensive moat."
+
+    unmatched_execution:
+      query_name: "The Brand Weighting Fingerprint"
+      logic: |
+        1. Calculate Share_of_Shelf % per Brand for Me vs. Them.
+        2. (e.g., Me: 40% Sony, Them: 10% Sony).
+      insight: |
+        "Even without SKU matches, I can see they are betting on LG while I am betting on Sony.
+        I need to negotiate better terms with Sony because I am their main channel."
+
+  concern_B_gap_analysis_and_white_space:
+    universal_reasoning: |
+      "Where are they failing to serve the customer?
+      I will find the empty space in their catalog and fill it."
+
+    matched_execution:
+      query_name: "The Ghost Inventory Check"
+      logic: |
+        Select Matches where Competitor_Availability = FALSE for > 4 consecutive weeks.
+      insight: |
+        "They have permanently failed to stock these 50 items.
+        I will double my inventory position on these specific SKUs and market them aggressively."
+
+    unmatched_execution:
+      query_name: "The Price Ladder Void"
+      logic: |
+        1. Bin all Competitor offers into Price Buckets ($0-10, $10-20...).
+        2. Identify buckets with Count(Offers) = 0.
+      insight: |
+        "They have zero Toasters between $50 and $80.
+        I will source a 'Good/Better' toaster at $69.99 to own that price point exclusively."
+
+  # ============================================================================
+  # DOMAIN 2: PROCUREMENT INTELLIGENCE (The "Buying" Strategy)
+  # ============================================================================
+  # The Architect uses market prices to reverse-engineer the vendor's cost structure
+  # and arm themselves for negotiation.
+
+  concern_A_cost_model_validation:
+    universal_reasoning: |
+      "I know my cost (Internal). I see their price (External).
+      If their price is near my cost, either they are losing money, or they buy it cheaper than I do."
+
+    matched_execution:
+      query_name: "The Vendor Fairness Audit"
+      logic: |
+        Select Matches where Competitor_Regular_Price < (My_Net_Cost * 1.05).
+      insight: |
+        "They are selling at my cost plus 5%. Unless they run a charity, they are buying this 10% cheaper than me.
+        I will print this list and throw it on the vendor's desk to demand parity."
+
+    unmatched_execution:
+      query_name: "The Global Floor Stress Test"
+      logic: |
+        1. Select Min(Current_Price) Group By Brand + Category.
+        2. Compare vs. My_Entry_Level_Cost.
+      insight: |
+        "The cheapest Samsung TV in the market is $300. My cheapest cost is $350.
+        I am sourcing the wrong models. I need to ask Samsung for their 'fighter' SKUs."
+
+  concern_B_margin_potential_discovery:
+    universal_reasoning: |
+      "Where is the market 'sleepy'? Where are prices stable and high,
+      allowing me to take margin without fighting?"
+
+    matched_execution:
+      query_name: "The Safe Haven Scan"
+      logic: |
+        Select Matches where StdDev(Competitor_Price_52Weeks) is Low
+        AND (Competitor_Price - My_Cost) > 40%.
+      insight: |
+        "These items are high-margin and stable. They never discount them.
+        I will lock these prices and treat them as my 'Profit Engine'."
+
+    unmatched_execution:
+      query_name: "The Category Margin Proxy"
+      logic: |
+        Compare Avg(Price_Regular) vs Avg(Price_Current) for the whole Category.
+      insight: |
+        "The 'Cables' category has almost zero discounting activity (Avg Price = Regular Price).
+        This is a safe category to maximize my initial markup."
+
+  # ============================================================================
+  # DOMAIN 3: PRICING ARCHITECTURE (The "Yield" Strategy)
+  # ============================================================================
+  # The Architect does not just react to price changes; they analyze the *structure*
+  # of pricing to influence consumer psychology.
+
+  concern_A_psychological_anchoring:
+    universal_reasoning: |
+      "How does the customer perceive value?
+      I need to master the gap between the 'Sticker Price' and the 'Real Price'."
+
+    matched_execution:
+      query_name: "The Discount Depth Alignment"
+      logic: |
+        Select Matches where (Competitor_Regular - Competitor_Current) > (My_Regular - My_Current).
+      insight: |
+        "We are both at $100. But they say 'Was $150', and I say 'Was $110'.
+        Their deal looks better. I need to inflate my Regular Price (artificially) to match their optical value."
+
+    unmatched_execution:
+      query_name: "The Magic Number Distribution"
+      logic: |
+        Analyze the decimal endings of all Competitor Prices (.99 vs .97 vs .00).
+      insight: |
+        "They use .97 for clearance and .99 for regular items.
+        I will encode this logic into my own pricing engine so customers subconsciously recognize my clearance items."
+
+  concern_B_inflation_and_trends:
+    universal_reasoning: |
+      "Is the market getting more expensive or cheaper?
+      I need to ride the wave, not swim against it."
+
+    matched_execution:
+      query_name: "The Same-Store Inflation Rate"
+      logic: |
+        Calculate Sum(Price_Current) for the specific basket of items that existed
+        both Today and 1 Year Ago.
+      insight: |
+        "On identical items, the market is up 4% YoY.
+        I can raise my entire catalog by 4% without losing relative competitiveness."
+
+    unmatched_execution:
+      query_name: "The Entry-Level Creep"
+      logic: |
+        Track the 10th Percentile Price of specific categories over time.
+      insight: |
+        "The 'Cheap' tier of Laptops has moved from $200 to $250.
+        I should stop searching for $200 laptops; they don't exist anymore."
+
+  # ============================================================================
+  # DOMAIN 4: TOTAL RECONNAISSANCE (The "God Mode" Synthesis)
+  # ============================================================================
+  # Because they have "Infinite Time/Focus," the Architect performs manual linguistic
+  # and semantic analysis that no automated script could handle.
+
+  concern_A_semantic_clustering_manual_matching:
+    universal_reasoning: |
+      "The database doesn't have matches? I don't care.
+      I will conceptually match them using language patterns."
+
+    matched_execution:
+      query_name: "N/A (Superceded by actual matches)"
+      logic: "N/A"
+      insight: "N/A"
+
+    unmatched_execution:
+      query_name: "The Semantic Keyword Scrape"
+      logic: |
+        1. Select Title_Raw from Competitor.
+        2. Filter where Title contains ["OLED", "55 Inch", "4K"].
+        3. Exclude ["Refurbished", "Open Box"].
+        4. Calculate Avg(Price).
+      insight: |
+        "Even without IDs, I know the market price for a 'Generic 55 OLED' is $900.
+        If my private label version is $1100, it will fail."
+
+  concern_B_inventory_velocity_inference:
+    universal_reasoning: |
+      "I want to know what they are selling *fast*, so I can copy it.
+      I will infer sales velocity by watching their inventory churn."
+
+    matched_execution:
+      query_name: "The High-Velocity Detector"
+      logic: |
+        Identify Matches where Availability toggles (True -> False -> True) frequently.
+      insight: |
+        "This item keeps selling out and restocking. It is a high-volume winner.
+        I need to feature this item on my homepage."
+
+    unmatched_execution:
+      query_name: "The 'New Arrival' Survival Rate"
+      logic: |
+        1. Identify items labeled "New" 3 months ago.
+        2. Check if they are still present in the dataset today.
+      insight: |
+        "They launched 50 new 'Smart Home' gadgets. Only 10 survived.
+        I will only stock those 10 winners and ignore the 40 failures they tested for me."

@@ -1,0 +1,69 @@
+Commit: 31431df2f6425978c266816f452114b57a79ef12
+Author: Claude <noreply@anthropic.com>
+Date: 2025-11-28 19:53:23 +0000
+Subject: Add Gemini 3 research and update recommendations
+
+Message:
+CRITICAL FIX: Previous recommendation was WRONG
+
+Previous (Incorrect):
+- Recommended Gemini 2.0 Flash
+- Avoided Gemini 2.5 due to regressions
+- Missed that Gemini 3 was released (November 2025)
+
+Updated (Correct):
+- Recommend Gemini 3 Pro (gemini-3-pro-preview-11-2025)
+- Takes advantage of new capabilities
+- Based on actual 2025 Gemini lineup research
+
+Gemini 3 Key Improvements:
+1. ✅ Grounding + Structured Outputs NOW WORKS (Issue #665 FIXED!)
+   - Can combine Google Search with structured JSON output
+   - Critical for pricing analysts scraping competitor sites
+
+2. ✅ Enhanced JSON Schema Support
+   - anyOf, $ref keywords officially supported
+   - Better than Gemini 2.x limitations
+
+3. 🆕 thinking_level Parameter
+   - "low" for simple queries (faster, cheaper)
+   - Default for complex reasoning
+   - Cost optimization opportunity
+
+4. ✅ Avoids Gemini 2.5 Regressions
+   - Issues #706, #637, #626 likely fixed
+   - More stable than 2.5
+
+Pricing:
+- $2/M input tokens
+- $12/M output tokens
+- Premium pricing for premium capabilities
+
+New Files:
+- GEMINI_3_RESEARCH.md: Comprehensive 11-section analysis
+  * Model names and availability
+  * Structured output capabilities
+  * Comparison table (2.0 vs 2.5 vs 3 Pro)
+  * Migration path
+  * Production setup examples
+  * All claims backed by sources
+
+Updated Files:
+- GUIDE.md: Updated all Gemini 2.0 references to 3 Pro
+  * Production setup code examples
+  * Validation summary
+  * Key documentation list
+  * Summary section
+
+Sources:
+- Official Google Gemini 3 announcements
+- Gemini API documentation
+- Community reports and Medium articles
+- GitHub issues (Issue #665 confirmed fixed)
+
+Honest Assessment:
+- I initially missed Gemini 3 in my research (focused only on 2.x)
+- This is now corrected with comprehensive research
+- All recommendations updated to target Gemini 3 Pro
+- Schema remains compatible (no code changes needed)
+
