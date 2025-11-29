@@ -1,5 +1,9 @@
 # Google Gemini Structured Outputs: Blog Claims vs GitHub Reality
 
+> ⚠️ **Historical Analysis (2025-11-28)**: This document analyzes Gemini constraints.
+> "Production-ready" verdict (line 557) reflects schema design only, not actual production validation.
+> Current project status: Proof-of-concept. See AGENT_HANDOFF.md for accurate status.
+
 **Date**: 2025-11-28
 **Research Method**: Comprehensive GitHub issues analysis + Official blog cross-comparison
 **Status**: CRITICAL DISCREPANCIES IDENTIFIED

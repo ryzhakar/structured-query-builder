@@ -121,6 +121,33 @@ See `DEPRECATION_INDEX.md` for complete mapping.
 
 ---
 
+## Poison Management System
+
+This repository includes an automated system to detect and eliminate documentation poison (false claims, fabricated metrics, contradictions).
+
+**Created**: 2025-11-29 after discovering 4,294 lines of poisonous documentation
+**Location**: `.claude/workflows/`
+
+### Quick Check
+```bash
+# Detect poison in current documentation
+.claude/workflows/poison-detector.sh
+
+# Full lifecycle (detect, assess, remediate, verify)
+.claude/workflows/poison-manager.sh report.txt assess
+```
+
+### What It Detects
+- False confidence signals ("production ready" without testing)
+- Metric inflation ("100%" without measurement code)
+- Completion theater (marked done when incomplete)
+- Contradictory claims (both "ready" and "not ready")
+- Performance claims without benchmarking code
+
+**Documentation**: See `.claude/workflows/README.md` and `.claude/workflows/POISON_FRAMEWORK.md`
+
+---
+
 ## Project Structure
 
 ```
