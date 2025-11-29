@@ -146,12 +146,16 @@ class WindowExpr(BaseModel):
 
     Essential for pricing analysis: rankings, moving averages, lag/lead for trends.
     Maps to: FUNC(column) OVER (PARTITION BY ... ORDER BY ...) AS alias
+    Supports table aliases: LAG(agg.count) for derived table columns
     """
 
     expr_type: Literal["window"] = "window"
     function: WindowFunc = Field(..., description="Window function")
     column: Optional[Column] = Field(
         None, description="Column argument for the function; None for COUNT(*)"
+    )
+    table_alias: Optional[str] = Field(
+        None, description="Table alias for column (for derived table references)"
     )
 
     # Window specification
