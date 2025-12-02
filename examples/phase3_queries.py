@@ -358,6 +358,346 @@ def query_29_inventory_velocity_detector():
     )
 
 
+def query_38_same_store_inflation_rate():
+    """
+    MATCHED: Calculate inflation rate on matched products over time.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Domain: Pricing Architecture
+        Concern: Inflation and Trends
+        Variant: Matched Execution
+        Query Name: "The Same-Store Inflation Rate"
+
+    Business Value:
+        "Is the market getting more expensive or cheaper? I need to ride the wave."
+        Insight: "On identical items, the market is up 4% YoY. I can raise my entire
+        catalog by 4% without losing relative competitiveness."
+
+    Action Trigger:
+        If inflation_rate > 3% → Safe to raise prices proportionally
+        Track market-wide price trends to guide pricing strategy
+
+    Pattern:
+        Uses LAG window function to compare current price against historical price
+        on the same matched products. Aggregates to calculate overall inflation rate.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.markdown_price,
+                alias="current_avg_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.previous_price,
+                alias="historical_avg_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="product_count"
+            ),
+        ],
+        from_=DerivedTable(
+            query=Query(
+                select=[
+                    ColumnExpr(source=QualifiedColumn(column=Column.id)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.category)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.markdown_price)),
+                    ColumnExpr(source=QualifiedColumn(column=Column.updated_at)),
+                    # LAG to get previous price (simplified - would need partition by time periods)
+                    WindowExpr(
+                        function=WindowFunc.lag,
+                        column=Column.markdown_price,
+                        partition_by=[Column.id],
+                        order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                        offset=52,  # ~52 weeks ago
+                        alias="previous_price"
+                    ),
+                ],
+                from_=FromClause(
+                    table=Table.product_offers,
+                ),
+                joins=[
+                    JoinClause(
+                        join_type=JoinType.inner,
+                        table=Table.exact_matches,
+                        alias="m",
+                        on=JoinCondition(
+                            left=QualifiedColumn(column=Column.id),
+                            right=QualifiedColumn(column=Column.source_id, table_alias="m")
+                        )
+                    ),
+                ],
+                where=WhereL1(
+                    groups=[
+                        ConditionGroup(
+                            conditions=[
+                                SimpleCondition(
+                                    column=QualifiedColumn(column=Column.vendor),
+                                    operator=ComparisonOp.ne,
+                                    value="Us"
+                                ),
+                            ],
+                            logic=LogicOp.and_
+                        )
+                    ],
+                    group_logic=LogicOp.and_
+                ),
+            ),
+            alias="inflation"
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.previous_price, table_alias="inflation"),
+                            operator=ComparisonOp.is_not_null,
+                            value=None
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.category]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
+def query_39_entry_level_creep():
+    """
+    UNMATCHED: Track 10th percentile price movement to detect market floor changes.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Domain: Pricing Architecture
+        Concern: Inflation and Trends
+        Variant: Unmatched Approximation
+        Query Name: "The Entry-Level Creep"
+
+    Business Value:
+        "Is the market getting more expensive or cheaper? Track the cheap tier."
+        Insight: "The 'Cheap' tier of Laptops has moved from $200 to $250.
+        I should stop searching for $200 laptops; they don't exist anymore."
+
+    Action Trigger:
+        If 10th_percentile increased > $20 → Update sourcing criteria for entry-level products
+        Stop pursuing price points below the new market floor
+
+    Pattern:
+        Uses PERCENTILE_DISC to find the 10th percentile price (entry-level threshold).
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            AggregateExpr(
+                function=AggregateFunc.percentile_disc,
+                column=Column.markdown_price,
+                alias="entry_level_price_10th",
+                percentile=0.10
+            ),
+            AggregateExpr(
+                function=AggregateFunc.min,
+                column=Column.markdown_price,
+                alias="absolute_floor_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="product_count"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.ne,
+                            value="Us"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        group_by=GroupByClause(columns=[Column.category]),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.category, direction=Direction.asc),
+            ]
+        ),
+    )
+
+
+def query_40_semantic_keyword_scrape():
+    """
+    UNMATCHED: Multi-keyword semantic search to price similar products.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Domain: Total Reconnaissance
+        Concern: Semantic Clustering Manual Matching
+        Variant: Unmatched Execution
+        Query Name: "The Semantic Keyword Scrape"
+
+    Business Value:
+        "The database doesn't have matches? I don't care. I will conceptually match
+        them using language patterns."
+
+        Insight: "Even without IDs, I know the market price for a 'Generic 55 OLED'
+        is $900. If my private label version is $1100, it will fail."
+
+    Action Trigger:
+        Use for pricing new products without exact matches.
+        Combine multiple keywords to narrow semantic search.
+
+    Pattern:
+        Uses multiple ILIKE conditions to filter for specific product features.
+        Calculates average market price for semantically similar products.
+
+    Example:
+        Searches for "55 inch" + "OLED" TVs - would be parameterized in production.
+    """
+    return Query(
+        select=[
+            AggregateExpr(
+                function=AggregateFunc.avg,
+                column=Column.markdown_price,
+                alias="avg_market_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.min,
+                column=Column.markdown_price,
+                alias="min_market_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.max,
+                column=Column.markdown_price,
+                alias="max_market_price"
+            ),
+            AggregateExpr(
+                function=AggregateFunc.count,
+                column=None,
+                alias="product_count"
+            ),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.ne,
+                            value="Us"
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.title),
+                            operator=ComparisonOp.ilike,
+                            value="%OLED%"
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.title),
+                            operator=ComparisonOp.ilike,
+                            value="%55%"
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+    )
+
+
+def query_41_new_arrival_survival_rate():
+    """
+    UNMATCHED: Identify products that survived 3+ months to detect winners.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Domain: Total Reconnaissance
+        Concern: Inventory Velocity Inference
+        Variant: Unmatched Approximation
+        Query Name: "The 'New Arrival' Survival Rate"
+
+    Business Value:
+        "I want to know what they are selling *fast*, so I can copy it.
+        They launched 50 new 'Smart Home' gadgets. Only 10 survived."
+
+    Action Trigger:
+        Stock only the survivors - they tested the market for you.
+        Avoid the 40 failures they already identified through liquidation.
+
+    Pattern:
+        Filters for products with created_at > 90 days ago that are still available.
+        Identifies long-term winners vs. failed experiments.
+
+    Note:
+        This simplified version filters on created_at. Production would compare
+        snapshots from different time periods.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id)),
+            ColumnExpr(source=QualifiedColumn(column=Column.title)),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand)),
+            ColumnExpr(source=QualifiedColumn(column=Column.category)),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price)),
+            ColumnExpr(source=QualifiedColumn(column=Column.created_at)),
+            ColumnExpr(source=QualifiedColumn(column=Column.availability)),
+        ],
+        from_=FromClause(table=Table.product_offers),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor),
+                            operator=ComparisonOp.ne,
+                            value="Us"
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.availability),
+                            operator=ComparisonOp.eq,
+                            value=True
+                        ),
+                        # Filter for products created 90+ days ago (survivors)
+                        # Note: Would need date arithmetic in production
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.created_at),
+                            operator=ComparisonOp.is_not_null,
+                            value=None
+                        ),
+                    ],
+                    logic=LogicOp.and_
+                )
+            ],
+            group_logic=LogicOp.and_
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.created_at, direction=Direction.asc),
+                OrderByItem(column=Column.category, direction=Direction.asc),
+            ]
+        ),
+        limit=LimitClause(limit=100)
+    )
+
+
 # =============================================================================
 # Main execution
 # =============================================================================
