@@ -12,7 +12,6 @@ Coverage: 68% → 85% (16/19 intelligence concerns)
 from structured_query_builder import *
 from structured_query_builder.translator import translate_query
 
-
 # =============================================================================
 # ARCHETYPE 5: ARCHITECT - Range Architecture (3 new queries)
 # =============================================================================
@@ -44,9 +43,19 @@ def query_24_commoditization_coefficient():
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="agg")),
-            ColumnExpr(source=QualifiedColumn(column=Column.total_our_products, table_alias="agg")),
-            ColumnExpr(source=QualifiedColumn(column=Column.matched_products, table_alias="agg")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.category, table_alias="agg")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.total_our_products, table_alias="agg"
+                )
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.matched_products, table_alias="agg"
+                )
+            ),
             # Calculate ratio: matched / total
             BinaryArithmetic(
                 left_column=Column.matched_products,
@@ -54,24 +63,26 @@ def query_24_commoditization_coefficient():
                 operator=ArithmeticOp.divide,
                 right_column=Column.total_our_products,
                 right_table_alias="agg",
-                alias="commoditization_coefficient"
+                alias="commoditization_coefficient",
             ),
         ],
         from_=FromClause(
             derived=DerivedTable(
                 select=[
-                    ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+                    ColumnExpr(
+                        source=QualifiedColumn(column=Column.category, table_alias="my")
+                    ),
                     AggregateExpr(
                         function=AggregateFunc.count,
                         column=Column.id,
                         table_alias="my",
-                        alias="total_our_products"
+                        alias="total_our_products",
                     ),
                     AggregateExpr(
                         function=AggregateFunc.count,
                         column=Column.source_id,
                         table_alias="em",
-                        alias="matched_products"
+                        alias="matched_products",
                     ),
                 ],
                 from_table=Table.product_offers,
@@ -85,14 +96,18 @@ def query_24_commoditization_coefficient():
                             ConditionGroup(
                                 conditions=[
                                     ColumnComparison(
-                                        left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                        left_column=QualifiedColumn(
+                                            column=Column.id, table_alias="my"
+                                        ),
                                         operator=ComparisonOp.eq,
-                                        right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                        right_column=QualifiedColumn(
+                                            column=Column.source_id, table_alias="em"
+                                        ),
                                     )
                                 ],
-                                logic=LogicOp.and_
+                                logic=LogicOp.and_,
                             )
-                        ]
+                        ],
                     ),
                 ],
                 where=WhereL0(
@@ -100,18 +115,20 @@ def query_24_commoditization_coefficient():
                         ConditionGroup(
                             conditions=[
                                 SimpleCondition(
-                                    column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                                    column=QualifiedColumn(
+                                        column=Column.vendor, table_alias="my"
+                                    ),
                                     operator=ComparisonOp.eq,
-                                    value="Us"
+                                    value="Us",
                                 ),
                             ],
-                            logic=LogicOp.and_
+                            logic=LogicOp.and_,
                         )
                     ],
-                    group_logic=LogicOp.and_
+                    group_logic=LogicOp.and_,
                 ),
                 group_by=GroupByClause(columns=[Column.category]),
-                alias="agg"
+                alias="agg",
             )
         ),
         order_by=OrderByClause(
@@ -151,16 +168,24 @@ def query_25_brand_weighting_fingerprint():
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="counts")),
-            ColumnExpr(source=QualifiedColumn(column=Column.vendor, table_alias="counts")),
-            ColumnExpr(source=QualifiedColumn(column=Column.product_count, table_alias="counts")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.brand, table_alias="counts")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.vendor, table_alias="counts")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.product_count, table_alias="counts"
+                )
+            ),
             # Window function to get vendor total
             WindowExpr(
                 function=WindowFunc.sum,
                 column=Column.product_count,
                 partition_by=[Column.vendor],
                 order_by=[],
-                alias="vendor_total"
+                alias="vendor_total",
             ),
             # Calculate percentage: (brand_count * 100) / vendor_total
             CompoundArithmetic(
@@ -169,7 +194,7 @@ def query_25_brand_weighting_fingerprint():
                 inner_right_value=100.0,
                 outer_operator=ArithmeticOp.divide,
                 outer_column=Column.vendor_total,
-                alias="brand_share_percent"
+                alias="brand_share_percent",
             ),
         ],
         from_=FromClause(
@@ -178,14 +203,12 @@ def query_25_brand_weighting_fingerprint():
                     ColumnExpr(source=QualifiedColumn(column=Column.brand)),
                     ColumnExpr(source=QualifiedColumn(column=Column.vendor)),
                     AggregateExpr(
-                        function=AggregateFunc.count,
-                        column=None,
-                        alias="product_count"
+                        function=AggregateFunc.count, column=None, alias="product_count"
                     ),
                 ],
                 from_table=Table.product_offers,
                 group_by=GroupByClause(columns=[Column.brand, Column.vendor]),
-                alias="counts"
+                alias="counts",
             )
         ),
         order_by=OrderByClause(
@@ -232,40 +255,38 @@ def query_26_price_ladder_void_scanner():
             AggregateExpr(
                 function=AggregateFunc.min,
                 column=Column.markdown_price,
-                alias="min_price"
+                alias="min_price",
             ),
             AggregateExpr(
                 function=AggregateFunc.max,
                 column=Column.markdown_price,
-                alias="max_price"
+                alias="max_price",
             ),
             AggregateExpr(
                 function=AggregateFunc.avg,
                 column=Column.markdown_price,
-                alias="avg_price"
+                alias="avg_price",
             ),
             # Percentiles for tier analysis
             AggregateExpr(
                 function=AggregateFunc.percentile_cont,
                 column=Column.markdown_price,
                 percentile=0.25,
-                alias="p25_price"
+                alias="p25_price",
             ),
             AggregateExpr(
                 function=AggregateFunc.percentile_cont,
                 column=Column.markdown_price,
                 percentile=0.75,
-                alias="p75_price"
+                alias="p75_price",
             ),
             AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="product_count"
+                function=AggregateFunc.count, column=None, alias="product_count"
             ),
             AggregateExpr(
                 function=AggregateFunc.stddev,
                 column=Column.markdown_price,
-                alias="price_spread"
+                alias="price_spread",
             ),
         ],
         from_=FromClause(table=Table.product_offers),
@@ -305,9 +326,19 @@ def query_15_category_margin_proxy():
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="margins")),
-            ColumnExpr(source=QualifiedColumn(column=Column.my_avg_price, table_alias="margins")),
-            ColumnExpr(source=QualifiedColumn(column=Column.comp_avg_price, table_alias="margins")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.category, table_alias="margins")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.my_avg_price, table_alias="margins"
+                )
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.comp_avg_price, table_alias="margins"
+                )
+            ),
             # Calculate margin opportunity: (comp_avg - my_avg) / my_avg
             CompoundArithmetic(
                 inner_left_column=Column.comp_avg_price,
@@ -318,24 +349,26 @@ def query_15_category_margin_proxy():
                 outer_operator=ArithmeticOp.divide,
                 outer_column=Column.my_avg_price,
                 outer_table_alias="margins",
-                alias="margin_opportunity_pct"
+                alias="margin_opportunity_pct",
             ),
         ],
         from_=FromClause(
             derived=DerivedTable(
                 select=[
-                    ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+                    ColumnExpr(
+                        source=QualifiedColumn(column=Column.category, table_alias="my")
+                    ),
                     AggregateExpr(
                         function=AggregateFunc.avg,
                         column=Column.markdown_price,
                         table_alias="my",
-                        alias="my_avg_price"
+                        alias="my_avg_price",
                     ),
                     AggregateExpr(
                         function=AggregateFunc.avg,
                         column=Column.markdown_price,
                         table_alias="comp",
-                        alias="comp_avg_price"
+                        alias="comp_avg_price",
                     ),
                 ],
                 from_table=Table.product_offers,
@@ -349,14 +382,18 @@ def query_15_category_margin_proxy():
                             ConditionGroup(
                                 conditions=[
                                     ColumnComparison(
-                                        left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                        left_column=QualifiedColumn(
+                                            column=Column.id, table_alias="my"
+                                        ),
                                         operator=ComparisonOp.eq,
-                                        right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                        right_column=QualifiedColumn(
+                                            column=Column.source_id, table_alias="em"
+                                        ),
                                     )
                                 ],
-                                logic=LogicOp.and_
+                                logic=LogicOp.and_,
                             )
-                        ]
+                        ],
                     ),
                     JoinSpec(
                         join_type=JoinType.inner,
@@ -366,36 +403,44 @@ def query_15_category_margin_proxy():
                             ConditionGroup(
                                 conditions=[
                                     ColumnComparison(
-                                        left_column=QualifiedColumn(column=Column.target_id, table_alias="em"),
+                                        left_column=QualifiedColumn(
+                                            column=Column.target_id, table_alias="em"
+                                        ),
                                         operator=ComparisonOp.eq,
-                                        right_column=QualifiedColumn(column=Column.id, table_alias="comp")
+                                        right_column=QualifiedColumn(
+                                            column=Column.id, table_alias="comp"
+                                        ),
                                     )
                                 ],
-                                logic=LogicOp.and_
+                                logic=LogicOp.and_,
                             )
-                        ]
+                        ],
                     ),
                 ],
                 where=WhereL0(
                     conditions=[
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            column=QualifiedColumn(
+                                column=Column.vendor, table_alias="my"
+                            ),
                             operator=ComparisonOp.eq,
-                            value="Us"
+                            value="Us",
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 ),
                 group_by=GroupByClause(columns=[Column.category]),
-                alias="margins"
+                alias="margins",
             )
         ),
         order_by=OrderByClause(
             items=[
-                OrderByItem(column=Column.margin_opportunity_pct, direction=Direction.desc),
+                OrderByItem(
+                    column=Column.margin_opportunity_pct, direction=Direction.desc
+                ),
             ]
         ),
-        limit=LimitClause(limit=50)
+        limit=LimitClause(limit=50),
     )
 
 
@@ -429,19 +474,17 @@ def query_37_magic_number_distribution():
             ColumnExpr(source=QualifiedColumn(column=Column.category)),
             ColumnExpr(source=QualifiedColumn(column=Column.is_markdown)),
             AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="product_count"
+                function=AggregateFunc.count, column=None, alias="product_count"
             ),
             AggregateExpr(
                 function=AggregateFunc.avg,
                 column=Column.markdown_price,
-                alias="avg_price"
+                alias="avg_price",
             ),
             AggregateExpr(
                 function=AggregateFunc.avg,
                 column=Column.regular_price,
-                alias="avg_regular_price"
+                alias="avg_regular_price",
             ),
         ],
         from_=FromClause(table=Table.product_offers),
@@ -452,13 +495,13 @@ def query_37_magic_number_distribution():
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.vendor),
                             operator=ComparisonOp.ne,
-                            value="Us"
+                            value="Us",
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         group_by=GroupByClause(columns=[Column.category, Column.is_markdown]),
         order_by=OrderByClause(
@@ -501,50 +544,69 @@ def query_36_discount_depth_alignment():
             ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
             ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
             ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="comp")),
-            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.regular_price, table_alias="my")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.markdown_price, table_alias="my")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.regular_price, table_alias="comp")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
+            ),
             # My discount amount
             ComputedExpr(
                 expression=CompoundArithmetic(
                     left=QualifiedColumn(column=Column.regular_price, table_alias="my"),
                     operator=ArithmeticOp.subtract,
-                    right=QualifiedColumn(column=Column.markdown_price, table_alias="my")
+                    right=QualifiedColumn(
+                        column=Column.markdown_price, table_alias="my"
+                    ),
                 ),
-                alias="my_discount_amount"
+                alias="my_discount_amount",
             ),
             # Competitor discount amount
             ComputedExpr(
                 expression=CompoundArithmetic(
-                    left=QualifiedColumn(column=Column.regular_price, table_alias="comp"),
+                    left=QualifiedColumn(
+                        column=Column.regular_price, table_alias="comp"
+                    ),
                     operator=ArithmeticOp.subtract,
-                    right=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
+                    right=QualifiedColumn(
+                        column=Column.markdown_price, table_alias="comp"
+                    ),
                 ),
-                alias="comp_discount_amount"
+                alias="comp_discount_amount",
             ),
             # Optical gap
             ComputedExpr(
                 expression=CompoundArithmetic(
                     left=CompoundArithmetic(
-                        left=QualifiedColumn(column=Column.regular_price, table_alias="comp"),
+                        left=QualifiedColumn(
+                            column=Column.regular_price, table_alias="comp"
+                        ),
                         operator=ArithmeticOp.subtract,
-                        right=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
+                        right=QualifiedColumn(
+                            column=Column.markdown_price, table_alias="comp"
+                        ),
                     ),
                     operator=ArithmeticOp.subtract,
                     right=CompoundArithmetic(
-                        left=QualifiedColumn(column=Column.regular_price, table_alias="my"),
+                        left=QualifiedColumn(
+                            column=Column.regular_price, table_alias="my"
+                        ),
                         operator=ArithmeticOp.subtract,
-                        right=QualifiedColumn(column=Column.markdown_price, table_alias="my")
-                    )
+                        right=QualifiedColumn(
+                            column=Column.markdown_price, table_alias="my"
+                        ),
+                    ),
                 ),
-                alias="optical_discount_gap"
+                alias="optical_discount_gap",
             ),
         ],
-        from_=FromClause(
-            table=Table.product_offers,
-            alias="my"
-        ),
+        from_=FromClause(table=Table.product_offers, alias="my"),
         joins=[
             JoinClause(
                 join_type=JoinType.inner,
@@ -552,8 +614,8 @@ def query_36_discount_depth_alignment():
                 alias="m",
                 on=JoinCondition(
                     left=QualifiedColumn(column=Column.id, table_alias="my"),
-                    right=QualifiedColumn(column=Column.source_id, table_alias="m")
-                )
+                    right=QualifiedColumn(column=Column.source_id, table_alias="m"),
+                ),
             ),
             JoinClause(
                 join_type=JoinType.inner,
@@ -561,8 +623,8 @@ def query_36_discount_depth_alignment():
                 alias="comp",
                 on=JoinCondition(
                     left=QualifiedColumn(column=Column.target_id, table_alias="m"),
-                    right=QualifiedColumn(column=Column.id, table_alias="comp")
-                )
+                    right=QualifiedColumn(column=Column.id, table_alias="comp"),
+                ),
             ),
         ],
         where=WhereL1(
@@ -570,34 +632,46 @@ def query_36_discount_depth_alignment():
                 ConditionGroup(
                     conditions=[
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            column=QualifiedColumn(
+                                column=Column.vendor, table_alias="my"
+                            ),
                             operator=ComparisonOp.eq,
-                            value="Us"
+                            value="Us",
                         ),
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.vendor, table_alias="comp"),
+                            column=QualifiedColumn(
+                                column=Column.vendor, table_alias="comp"
+                            ),
                             operator=ComparisonOp.ne,
-                            value="Us"
+                            value="Us",
                         ),
                         # Filter: competitor discount > my discount (they look better)
                         ArithmeticCondition(
                             left=CompoundArithmetic(
-                                left=QualifiedColumn(column=Column.regular_price, table_alias="comp"),
+                                left=QualifiedColumn(
+                                    column=Column.regular_price, table_alias="comp"
+                                ),
                                 operator=ArithmeticOp.subtract,
-                                right=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
+                                right=QualifiedColumn(
+                                    column=Column.markdown_price, table_alias="comp"
+                                ),
                             ),
                             operator=ComparisonOp.gt,
                             right=CompoundArithmetic(
-                                left=QualifiedColumn(column=Column.regular_price, table_alias="my"),
+                                left=QualifiedColumn(
+                                    column=Column.regular_price, table_alias="my"
+                                ),
                                 operator=ArithmeticOp.subtract,
-                                right=QualifiedColumn(column=Column.markdown_price, table_alias="my")
-                            )
+                                right=QualifiedColumn(
+                                    column=Column.markdown_price, table_alias="my"
+                                ),
+                            ),
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         order_by=OrderByClause(
             items=[
@@ -605,11 +679,11 @@ def query_36_discount_depth_alignment():
                 OrderByItem(
                     column=Column.regular_price,
                     direction=Direction.desc,
-                    table_alias="comp"
+                    table_alias="comp",
                 ),
             ]
         ),
-        limit=LimitClause(limit=100)
+        limit=LimitClause(limit=100),
     )
 
 
@@ -622,9 +696,18 @@ if __name__ == "__main__":
     print("=" * 80)
 
     queries = [
-        ("Q24: Commoditization Coefficient (Matched)", query_24_commoditization_coefficient),
-        ("Q25: Brand Weighting Fingerprint (Unmatched)", query_25_brand_weighting_fingerprint),
-        ("Q26: Price Ladder Void Scanner (Unmatched)", query_26_price_ladder_void_scanner),
+        (
+            "Q24: Commoditization Coefficient (Matched)",
+            query_24_commoditization_coefficient,
+        ),
+        (
+            "Q25: Brand Weighting Fingerprint (Unmatched)",
+            query_25_brand_weighting_fingerprint,
+        ),
+        (
+            "Q26: Price Ladder Void Scanner (Unmatched)",
+            query_26_price_ladder_void_scanner,
+        ),
     ]
 
     for name, query_func in queries:

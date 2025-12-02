@@ -10,7 +10,6 @@ ALL QUERIES TESTED AND WORKING.
 from structured_query_builder import *
 from structured_query_builder.translator import translate_query
 
-
 # =============================================================================
 # ARCHETYPE 5: ARCHITECT - Procurement & Total Reconnaissance (3 queries)
 # =============================================================================
@@ -41,10 +40,16 @@ def query_27_vendor_fairness_audit():
         select=[
             ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
             ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.category, table_alias="my")
+            ),
             ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="comp")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.regular_price, table_alias="my")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.regular_price, table_alias="comp")
+            ),
             # Calculate gap: my.regular - comp.regular (positive = we pay more)
             BinaryArithmetic(
                 left_column=Column.regular_price,
@@ -52,7 +57,7 @@ def query_27_vendor_fairness_audit():
                 operator=ArithmeticOp.subtract,
                 right_column=Column.regular_price,
                 right_table_alias="comp",
-                alias="vendor_gap"
+                alias="vendor_gap",
             ),
         ],
         from_=FromClause(
@@ -67,14 +72,18 @@ def query_27_vendor_fairness_audit():
                         ConditionGroup(
                             conditions=[
                                 ColumnComparison(
-                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    left_column=QualifiedColumn(
+                                        column=Column.id, table_alias="my"
+                                    ),
                                     operator=ComparisonOp.eq,
-                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                    right_column=QualifiedColumn(
+                                        column=Column.source_id, table_alias="em"
+                                    ),
                                 )
                             ],
-                            logic=LogicOp.and_
+                            logic=LogicOp.and_,
                         )
-                    ]
+                    ],
                 ),
                 JoinSpec(
                     join_type=JoinType.inner,
@@ -84,44 +93,54 @@ def query_27_vendor_fairness_audit():
                         ConditionGroup(
                             conditions=[
                                 ColumnComparison(
-                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="em"),
+                                    left_column=QualifiedColumn(
+                                        column=Column.target_id, table_alias="em"
+                                    ),
                                     operator=ComparisonOp.eq,
-                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp")
+                                    right_column=QualifiedColumn(
+                                        column=Column.id, table_alias="comp"
+                                    ),
                                 )
                             ],
-                            logic=LogicOp.and_
+                            logic=LogicOp.and_,
                         )
-                    ]
+                    ],
                 ),
-            ]
+            ],
         ),
         where=WhereL1(
             groups=[
                 ConditionGroup(
                     conditions=[
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            column=QualifiedColumn(
+                                column=Column.vendor, table_alias="my"
+                            ),
                             operator=ComparisonOp.eq,
-                            value="Us"
+                            value="Us",
                         ),
                         # Competitor regular price lower than ours = they buy cheaper
                         ColumnComparison(
-                            left_column=QualifiedColumn(column=Column.regular_price, table_alias="comp"),
+                            left_column=QualifiedColumn(
+                                column=Column.regular_price, table_alias="comp"
+                            ),
                             operator=ComparisonOp.lt,
-                            right_column=QualifiedColumn(column=Column.regular_price, table_alias="my")
+                            right_column=QualifiedColumn(
+                                column=Column.regular_price, table_alias="my"
+                            ),
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         order_by=OrderByClause(
             items=[
                 OrderByItem(column=Column.brand, direction=Direction.asc),
             ]
         ),
-        limit=LimitClause(limit=100)
+        limit=LimitClause(limit=100),
     )
 
 
@@ -156,10 +175,16 @@ def query_28_safe_haven_scanner():
         select=[
             ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
             ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="my")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.category, table_alias="my")
+            ),
             ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.markdown_price, table_alias="my")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
+            ),
             # Price gap (comp - my)
             BinaryArithmetic(
                 left_column=Column.markdown_price,
@@ -167,7 +192,7 @@ def query_28_safe_haven_scanner():
                 operator=ArithmeticOp.subtract,
                 right_column=Column.markdown_price,
                 right_table_alias="my",
-                alias="price_gap"
+                alias="price_gap",
             ),
             # Temporal price volatility using window STDDEV over 52 weeks
             WindowExpr(
@@ -175,8 +200,10 @@ def query_28_safe_haven_scanner():
                 column=Column.markdown_price,
                 table_alias="comp",
                 partition_by=[Column.id],
-                order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
-                alias="price_volatility_52w"
+                order_by=[
+                    OrderByItem(column=Column.updated_at, direction=Direction.asc)
+                ],
+                alias="price_volatility_52w",
             ),
         ],
         from_=FromClause(
@@ -191,14 +218,18 @@ def query_28_safe_haven_scanner():
                         ConditionGroup(
                             conditions=[
                                 ColumnComparison(
-                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    left_column=QualifiedColumn(
+                                        column=Column.id, table_alias="my"
+                                    ),
                                     operator=ComparisonOp.eq,
-                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="em")
+                                    right_column=QualifiedColumn(
+                                        column=Column.source_id, table_alias="em"
+                                    ),
                                 )
                             ],
-                            logic=LogicOp.and_
+                            logic=LogicOp.and_,
                         )
-                    ]
+                    ],
                 ),
                 JoinSpec(
                     join_type=JoinType.inner,
@@ -208,37 +239,47 @@ def query_28_safe_haven_scanner():
                         ConditionGroup(
                             conditions=[
                                 ColumnComparison(
-                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="em"),
+                                    left_column=QualifiedColumn(
+                                        column=Column.target_id, table_alias="em"
+                                    ),
                                     operator=ComparisonOp.eq,
-                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp")
+                                    right_column=QualifiedColumn(
+                                        column=Column.id, table_alias="comp"
+                                    ),
                                 ),
                                 # Join on same product across time periods
                                 ColumnComparison(
-                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    left_column=QualifiedColumn(
+                                        column=Column.id, table_alias="my"
+                                    ),
                                     operator=ComparisonOp.eq,
-                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp")
-                                )
+                                    right_column=QualifiedColumn(
+                                        column=Column.id, table_alias="comp"
+                                    ),
+                                ),
                             ],
-                            logic=LogicOp.and_
+                            logic=LogicOp.and_,
                         )
-                    ]
+                    ],
                 ),
-            ]
+            ],
         ),
         where=WhereL1(
             groups=[
                 ConditionGroup(
                     conditions=[
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            column=QualifiedColumn(
+                                column=Column.vendor, table_alias="my"
+                            ),
                             operator=ComparisonOp.eq,
-                            value="Us"
+                            value="Us",
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         order_by=OrderByClause(
             items=[
@@ -246,7 +287,7 @@ def query_28_safe_haven_scanner():
                 OrderByItem(column=Column.brand, direction=Direction.asc),
             ]
         ),
-        limit=LimitClause(limit=100)
+        limit=LimitClause(limit=100),
     )
 
 
@@ -280,32 +321,74 @@ def query_29_inventory_velocity_detector():
     """
     return Query(
         select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="velocity")),
-            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="velocity")),
-            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="velocity")),
-            ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="velocity")),
-            ColumnExpr(source=QualifiedColumn(column=Column.availability, table_alias="velocity")),
-            ColumnExpr(source=QualifiedColumn(column=Column.previous_availability, table_alias="velocity")),
-            ColumnExpr(source=QualifiedColumn(column=Column.toggle_count, table_alias="velocity")),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.id, table_alias="velocity")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.title, table_alias="velocity")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.brand, table_alias="velocity")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(column=Column.category, table_alias="velocity")
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.availability, table_alias="velocity"
+                )
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.previous_availability, table_alias="velocity"
+                )
+            ),
+            ColumnExpr(
+                source=QualifiedColumn(
+                    column=Column.toggle_count, table_alias="velocity"
+                )
+            ),
         ],
         from_=FromClause(
             derived=DerivedTable(
                 select=[
-                    ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="comp")),
-                    ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="comp")),
-                    ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="comp")),
-                    ColumnExpr(source=QualifiedColumn(column=Column.category, table_alias="comp")),
-                    ColumnExpr(source=QualifiedColumn(column=Column.availability, table_alias="comp")),
-                    ColumnExpr(source=QualifiedColumn(column=Column.updated_at, table_alias="comp")),
+                    ColumnExpr(
+                        source=QualifiedColumn(column=Column.id, table_alias="comp")
+                    ),
+                    ColumnExpr(
+                        source=QualifiedColumn(column=Column.title, table_alias="comp")
+                    ),
+                    ColumnExpr(
+                        source=QualifiedColumn(column=Column.brand, table_alias="comp")
+                    ),
+                    ColumnExpr(
+                        source=QualifiedColumn(
+                            column=Column.category, table_alias="comp"
+                        )
+                    ),
+                    ColumnExpr(
+                        source=QualifiedColumn(
+                            column=Column.availability, table_alias="comp"
+                        )
+                    ),
+                    ColumnExpr(
+                        source=QualifiedColumn(
+                            column=Column.updated_at, table_alias="comp"
+                        )
+                    ),
                     # LAG to get previous availability state
                     WindowExpr(
                         function=WindowFunc.lag,
                         column=Column.availability,
                         table_alias="comp",
                         partition_by=[Column.id],
-                        order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                        order_by=[
+                            OrderByItem(
+                                column=Column.updated_at, direction=Direction.asc
+                            )
+                        ],
                         offset=1,
-                        alias="previous_availability"
+                        alias="previous_availability",
                     ),
                     # Count observations per product (toggle frequency proxy)
                     WindowExpr(
@@ -313,8 +396,12 @@ def query_29_inventory_velocity_detector():
                         column=Column.id,
                         table_alias="comp",
                         partition_by=[Column.id],
-                        order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
-                        alias="toggle_count"
+                        order_by=[
+                            OrderByItem(
+                                column=Column.updated_at, direction=Direction.asc
+                            )
+                        ],
+                        alias="toggle_count",
                     ),
                 ],
                 from_table=Table.product_offers,
@@ -322,14 +409,16 @@ def query_29_inventory_velocity_detector():
                 where=WhereL0(
                     conditions=[
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.vendor, table_alias="comp"),
+                            column=QualifiedColumn(
+                                column=Column.vendor, table_alias="comp"
+                            ),
                             operator=ComparisonOp.ne,
-                            value="Us"
+                            value="Us",
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 ),
-                alias="velocity"
+                alias="velocity",
             )
         ),
         where=WhereL1(
@@ -338,15 +427,17 @@ def query_29_inventory_velocity_detector():
                     conditions=[
                         # Multiple observations (indicates toggling behavior)
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.toggle_count, table_alias="velocity"),
+                            column=QualifiedColumn(
+                                column=Column.toggle_count, table_alias="velocity"
+                            ),
                             operator=ComparisonOp.gt,
-                            value=3  # At least 4 observations
+                            value=3,  # At least 4 observations
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         order_by=OrderByClause(
             items=[
@@ -354,7 +445,7 @@ def query_29_inventory_velocity_detector():
                 OrderByItem(column=Column.category, direction=Direction.asc),
             ]
         ),
-        limit=LimitClause(limit=100)
+        limit=LimitClause(limit=100),
     )
 
 
@@ -388,17 +479,15 @@ def query_38_same_store_inflation_rate():
             AggregateExpr(
                 function=AggregateFunc.avg,
                 column=Column.markdown_price,
-                alias="current_avg_price"
+                alias="current_avg_price",
             ),
             AggregateExpr(
                 function=AggregateFunc.avg,
                 column=Column.previous_price,
-                alias="historical_avg_price"
+                alias="historical_avg_price",
             ),
             AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="product_count"
+                function=AggregateFunc.count, column=None, alias="product_count"
             ),
         ],
         from_=DerivedTable(
@@ -413,9 +502,13 @@ def query_38_same_store_inflation_rate():
                         function=WindowFunc.lag,
                         column=Column.markdown_price,
                         partition_by=[Column.id],
-                        order_by=[OrderByItem(column=Column.updated_at, direction=Direction.asc)],
+                        order_by=[
+                            OrderByItem(
+                                column=Column.updated_at, direction=Direction.asc
+                            )
+                        ],
                         offset=52,  # ~52 weeks ago
-                        alias="previous_price"
+                        alias="previous_price",
                     ),
                 ],
                 from_=FromClause(
@@ -428,8 +521,10 @@ def query_38_same_store_inflation_rate():
                         alias="m",
                         on=JoinCondition(
                             left=QualifiedColumn(column=Column.id),
-                            right=QualifiedColumn(column=Column.source_id, table_alias="m")
-                        )
+                            right=QualifiedColumn(
+                                column=Column.source_id, table_alias="m"
+                            ),
+                        ),
                     ),
                 ],
                 where=WhereL1(
@@ -439,31 +534,33 @@ def query_38_same_store_inflation_rate():
                                 SimpleCondition(
                                     column=QualifiedColumn(column=Column.vendor),
                                     operator=ComparisonOp.ne,
-                                    value="Us"
+                                    value="Us",
                                 ),
                             ],
-                            logic=LogicOp.and_
+                            logic=LogicOp.and_,
                         )
                     ],
-                    group_logic=LogicOp.and_
+                    group_logic=LogicOp.and_,
                 ),
             ),
-            alias="inflation"
+            alias="inflation",
         ),
         where=WhereL1(
             groups=[
                 ConditionGroup(
                     conditions=[
                         SimpleCondition(
-                            column=QualifiedColumn(column=Column.previous_price, table_alias="inflation"),
+                            column=QualifiedColumn(
+                                column=Column.previous_price, table_alias="inflation"
+                            ),
                             operator=ComparisonOp.is_not_null,
-                            value=None
+                            value=None,
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         group_by=GroupByClause(columns=[Column.category]),
         order_by=OrderByClause(
@@ -504,17 +601,15 @@ def query_39_entry_level_creep():
                 function=AggregateFunc.percentile_disc,
                 column=Column.markdown_price,
                 alias="entry_level_price_10th",
-                percentile=0.10
+                percentile=0.10,
             ),
             AggregateExpr(
                 function=AggregateFunc.min,
                 column=Column.markdown_price,
-                alias="absolute_floor_price"
+                alias="absolute_floor_price",
             ),
             AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="product_count"
+                function=AggregateFunc.count, column=None, alias="product_count"
             ),
         ],
         from_=FromClause(table=Table.product_offers),
@@ -525,13 +620,13 @@ def query_39_entry_level_creep():
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.vendor),
                             operator=ComparisonOp.ne,
-                            value="Us"
+                            value="Us",
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         group_by=GroupByClause(columns=[Column.category]),
         order_by=OrderByClause(
@@ -576,22 +671,20 @@ def query_40_semantic_keyword_scrape():
             AggregateExpr(
                 function=AggregateFunc.avg,
                 column=Column.markdown_price,
-                alias="avg_market_price"
+                alias="avg_market_price",
             ),
             AggregateExpr(
                 function=AggregateFunc.min,
                 column=Column.markdown_price,
-                alias="min_market_price"
+                alias="min_market_price",
             ),
             AggregateExpr(
                 function=AggregateFunc.max,
                 column=Column.markdown_price,
-                alias="max_market_price"
+                alias="max_market_price",
             ),
             AggregateExpr(
-                function=AggregateFunc.count,
-                column=None,
-                alias="product_count"
+                function=AggregateFunc.count, column=None, alias="product_count"
             ),
         ],
         from_=FromClause(table=Table.product_offers),
@@ -602,23 +695,23 @@ def query_40_semantic_keyword_scrape():
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.vendor),
                             operator=ComparisonOp.ne,
-                            value="Us"
+                            value="Us",
                         ),
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.title),
                             operator=ComparisonOp.ilike,
-                            value="%OLED%"
+                            value="%OLED%",
                         ),
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.title),
                             operator=ComparisonOp.ilike,
-                            value="%55%"
+                            value="%55%",
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
     )
 
@@ -668,25 +761,25 @@ def query_41_new_arrival_survival_rate():
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.vendor),
                             operator=ComparisonOp.ne,
-                            value="Us"
+                            value="Us",
                         ),
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.availability),
                             operator=ComparisonOp.eq,
-                            value=True
+                            value=True,
                         ),
                         # Filter for products created 90+ days ago (survivors)
                         # Note: Would need date arithmetic in production
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.created_at),
                             operator=ComparisonOp.is_not_null,
-                            value=None
+                            value=None,
                         ),
                     ],
-                    logic=LogicOp.and_
+                    logic=LogicOp.and_,
                 )
             ],
-            group_logic=LogicOp.and_
+            group_logic=LogicOp.and_,
         ),
         order_by=OrderByClause(
             items=[
@@ -694,7 +787,7 @@ def query_41_new_arrival_survival_rate():
                 OrderByItem(column=Column.category, direction=Direction.asc),
             ]
         ),
-        limit=LimitClause(limit=100)
+        limit=LimitClause(limit=100),
     )
 
 
@@ -709,7 +802,10 @@ if __name__ == "__main__":
     queries = [
         ("Q27: Vendor Fairness Audit (Matched)", query_27_vendor_fairness_audit),
         ("Q28: Safe Haven Scanner (Matched)", query_28_safe_haven_scanner),
-        ("Q29: Inventory Velocity Detector (Matched)", query_29_inventory_velocity_detector),
+        (
+            "Q29: Inventory Velocity Detector (Matched)",
+            query_29_inventory_velocity_detector,
+        ),
     ]
 
     for name, query_func in queries:
@@ -723,4 +819,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"ERROR: {e}")
             import traceback
+
             traceback.print_exc()
