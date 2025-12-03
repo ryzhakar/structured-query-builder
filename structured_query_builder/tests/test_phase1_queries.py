@@ -206,7 +206,7 @@ class TestPhase1Queries:
 
     def test_query_16_map_violations(self):
         """Test Q16: MAP Violations (Unmatched)."""
-        from examples.phase1_queries import query_16_map_violations_unmatched
+        from examples.pricing_intelligence_queries import query_16_map_violations_unmatched
 
         query = query_16_map_violations_unmatched()
         sql = translate_query(query)
@@ -220,7 +220,7 @@ class TestPhase1Queries:
 
     def test_query_17_premium_gap(self):
         """Test Q17: Premium Gap Analysis (Matched)."""
-        from examples.phase1_queries import query_17_premium_gap_analysis
+        from examples.pricing_intelligence_queries import query_17_premium_gap_analysis
 
         query = query_17_premium_gap_analysis()
         sql = translate_query(query)
@@ -233,7 +233,7 @@ class TestPhase1Queries:
 
     def test_query_18_supply_chain(self):
         """Test Q18: Supply Chain Failure Detector (temporal with LAG)."""
-        from examples.phase1_queries import query_18_supply_chain_failure_detector
+        from examples.pricing_intelligence_queries import query_18_supply_chain_failure_detector
 
         query = query_18_supply_chain_failure_detector()
         sql = translate_query(query)
@@ -246,7 +246,7 @@ class TestPhase1Queries:
 
     def test_query_19_loss_leader(self):
         """Test Q19: Loss-Leader Hunter (Matched)."""
-        from examples.phase1_queries import query_19_loss_leader_hunter
+        from examples.pricing_intelligence_queries import query_19_loss_leader_hunter
 
         query = query_19_loss_leader_hunter()
         sql = translate_query(query)
@@ -257,7 +257,7 @@ class TestPhase1Queries:
 
     def test_query_20_price_snapshot(self):
         """Test Q20: Category Price Snapshot (temporal comparison with self-join)."""
-        from examples.phase1_queries import query_20_category_price_snapshot
+        from examples.pricing_intelligence_queries import query_20_category_price_snapshot
 
         query = query_20_category_price_snapshot()
         sql = translate_query(query)
@@ -272,7 +272,7 @@ class TestPhase1Queries:
 
     def test_query_21_promo_erosion(self):
         """Test Q21: Promo Erosion Index (Unmatched)."""
-        from examples.phase1_queries import query_21_promo_erosion_index
+        from examples.pricing_intelligence_queries import query_21_promo_erosion_index
 
         query = query_21_promo_erosion_index()
         sql = translate_query(query)
@@ -284,7 +284,7 @@ class TestPhase1Queries:
 
     def test_query_22_brand_presence(self):
         """Test Q22: Brand Presence Tracking with LAG (Unmatched)."""
-        from examples.phase1_queries import query_22_brand_presence_tracking
+        from examples.pricing_intelligence_queries import query_22_brand_presence_tracking
 
         query = query_22_brand_presence_tracking()
         sql = translate_query(query)
@@ -300,7 +300,7 @@ class TestPhase1Queries:
 
     def test_query_23_discount_depth(self):
         """Test Q23: Discount Depth Distribution (Unmatched)."""
-        from examples.phase1_queries import query_23_discount_depth_distribution
+        from examples.pricing_intelligence_queries import query_23_discount_depth_distribution
 
         query = query_23_discount_depth_distribution()
         sql = translate_query(query)

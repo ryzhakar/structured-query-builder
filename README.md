@@ -33,9 +33,7 @@ uv run pytest structured_query_builder/tests/ -v
 uv run python structured_query_builder/tests/test_all_queries_smoke.py
 
 # Run query examples
-uv run python examples/phase1_queries.py  # 23 queries
-uv run python examples/phase2_queries.py  # 6 queries
-uv run python examples/phase3_queries.py  # 7 queries
+uv run python examples/pricing_intelligence_queries.py
 ```
 
 ---
@@ -127,9 +125,7 @@ structured-query-builder/
 │   ├── translator.py              # Pydantic → SQL
 │   └── tests/                     # 117 tests
 ├── examples/                       # 36 query implementations
-│   ├── phase1_queries.py          # 23 queries
-│   ├── phase2_queries.py          # 6 queries
-│   └── phase3_queries.py          # 7 queries
+│   └── pricing_intelligence_queries.py  # All 36 queries
 ├── intelligence_models/            # Query specifications
 │   └── query_implementation_mapping.yaml  # Canonical reference
 └── archive/                        # Historical documentation
@@ -172,9 +168,7 @@ uv run pytest structured_query_builder/tests/test_hypothesis_generation.py -v
 - Canonical reference for query implementations
 
 **Code Organization**:
-- `examples/phase1_queries.py` - 23 queries (ENFORCER, PREDATOR, MERCENARY)
-- `examples/phase2_queries.py` - 6 queries (HISTORIAN, MERCENARY)
-- `examples/phase3_queries.py` - 7 queries (ARCHITECT)
+- `examples/pricing_intelligence_queries.py` - All 36 queries across 5 archetypes (ENFORCER, PREDATOR, HISTORIAN, MERCENARY, ARCHITECT)
 
 **Historical Documentation**: Archived in `archive/session-handoffs/`
 
@@ -206,6 +200,7 @@ uv run pytest structured_query_builder/tests/test_hypothesis_generation.py -v
 **2025-11-29**: Phase 1-3 implementation (19/30 → 30/30 queries)
 **2025-12-03**: Q30-Q41 fixes (all validation errors resolved, 100% test coverage)
 **2025-12-03**: Documentation cleanup and consolidation
+**2025-12-03**: Query consolidation (phase1/2/3 → single pricing_intelligence_queries.py file)
 
 See `archive/session-handoffs/` for complete implementation history.
 

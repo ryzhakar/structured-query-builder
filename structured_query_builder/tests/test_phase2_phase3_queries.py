@@ -20,7 +20,7 @@ class TestPhase2Queries:
 
     def test_query_24_commoditization_coefficient(self):
         """Test Q24: Commoditization Coefficient (Matched)."""
-        from examples.phase2_queries import query_24_commoditization_coefficient
+        from examples.pricing_intelligence_queries import query_24_commoditization_coefficient
 
         query = query_24_commoditization_coefficient()
         sql = translate_query(query)
@@ -38,7 +38,7 @@ class TestPhase2Queries:
 
     def test_query_25_brand_weighting_fingerprint(self):
         """Test Q25: Brand Weighting Fingerprint (Unmatched)."""
-        from examples.phase2_queries import query_25_brand_weighting_fingerprint
+        from examples.pricing_intelligence_queries import query_25_brand_weighting_fingerprint
 
         query = query_25_brand_weighting_fingerprint()
         sql = translate_query(query)
@@ -54,7 +54,7 @@ class TestPhase2Queries:
 
     def test_query_26_price_ladder_void_scanner(self):
         """Test Q26: Price Ladder Void Scanner (Unmatched)."""
-        from examples.phase2_queries import query_26_price_ladder_void_scanner
+        from examples.pricing_intelligence_queries import query_26_price_ladder_void_scanner
 
         query = query_26_price_ladder_void_scanner()
         sql = translate_query(query)
@@ -77,7 +77,7 @@ class TestPhase3Queries:
 
     def test_query_27_vendor_fairness_audit(self):
         """Test Q27: Vendor Fairness Audit (Matched)."""
-        from examples.phase3_queries import query_27_vendor_fairness_audit
+        from examples.pricing_intelligence_queries import query_27_vendor_fairness_audit
 
         query = query_27_vendor_fairness_audit()
         sql = translate_query(query)
@@ -98,7 +98,7 @@ class TestPhase3Queries:
 
     def test_query_28_safe_haven_scanner(self):
         """Test Q28: Safe Haven Scanner with temporal STDDEV (Matched)."""
-        from examples.phase3_queries import query_28_safe_haven_scanner
+        from examples.pricing_intelligence_queries import query_28_safe_haven_scanner
 
         query = query_28_safe_haven_scanner()
         sql = translate_query(query)
@@ -118,7 +118,7 @@ class TestPhase3Queries:
 
     def test_query_29_inventory_velocity_detector(self):
         """Test Q29: Inventory Velocity Detector with LAG state tracking."""
-        from examples.phase3_queries import query_29_inventory_velocity_detector
+        from examples.pricing_intelligence_queries import query_29_inventory_velocity_detector
 
         query = query_29_inventory_velocity_detector()
         sql = translate_query(query)

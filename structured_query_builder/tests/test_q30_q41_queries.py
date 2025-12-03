@@ -15,7 +15,7 @@ class TestQ30Q35EnforcerPredatorMercenary:
 
     def test_query_30_index_drift_check(self):
         """Test Q30: Index Drift Check (ENFORCER - Parity Maintenance)."""
-        from examples.phase1_queries import query_30_index_drift_check
+        from examples.pricing_intelligence_queries import query_30_index_drift_check
 
         query = query_30_index_drift_check()
         sql = translate_query(query)
@@ -38,7 +38,7 @@ class TestQ30Q35EnforcerPredatorMercenary:
 
     def test_query_31_average_selling_price_gap(self):
         """Test Q31: Average Selling Price Gap (ENFORCER - Parity Maintenance)."""
-        from examples.phase1_queries import query_31_average_selling_price_gap
+        from examples.pricing_intelligence_queries import query_31_average_selling_price_gap
 
         query = query_31_average_selling_price_gap()
         sql = translate_query(query)
@@ -54,7 +54,7 @@ class TestQ30Q35EnforcerPredatorMercenary:
 
     def test_query_32_sku_violation_scan(self):
         """Test Q32: SKU Violation Scan (ENFORCER - MAP Policing)."""
-        from examples.phase1_queries import query_32_sku_violation_scan
+        from examples.pricing_intelligence_queries import query_32_sku_violation_scan
 
         query = query_32_sku_violation_scan()
         sql = translate_query(query)
@@ -75,7 +75,7 @@ class TestQ30Q35EnforcerPredatorMercenary:
 
     def test_query_33_unnecessary_discount_finder(self):
         """Test Q33: Unnecessary Discount Finder (PREDATOR - Headroom Discovery)."""
-        from examples.phase1_queries import query_33_unnecessary_discount_finder
+        from examples.pricing_intelligence_queries import query_33_unnecessary_discount_finder
 
         query = query_33_unnecessary_discount_finder()
         sql = translate_query(query)
@@ -97,7 +97,7 @@ class TestQ30Q35EnforcerPredatorMercenary:
 
     def test_query_34_anchor_check(self):
         """Test Q34: Anchor Check (MERCENARY - Optical Dominance)."""
-        from examples.phase1_queries import query_34_anchor_check
+        from examples.pricing_intelligence_queries import query_34_anchor_check
 
         query = query_34_anchor_check()
         sql = translate_query(query)
@@ -118,7 +118,7 @@ class TestQ30Q35EnforcerPredatorMercenary:
 
     def test_query_35_ad_hoc_keyword_scrape(self):
         """Test Q35: Ad Hoc Keyword Scrape (ARCHITECT - Semantic Clustering)."""
-        from examples.phase1_queries import query_35_ad_hoc_keyword_scrape
+        from examples.pricing_intelligence_queries import query_35_ad_hoc_keyword_scrape
 
         query = query_35_ad_hoc_keyword_scrape()
         sql = translate_query(query)
@@ -141,7 +141,7 @@ class TestQ36Q37MercenaryHistorian:
 
     def test_query_36_discount_depth_alignment(self):
         """Test Q36: Discount Depth Alignment (MERCENARY - Optical Dominance)."""
-        from examples.phase2_queries import query_36_discount_depth_alignment
+        from examples.pricing_intelligence_queries import query_36_discount_depth_alignment
 
         query = query_36_discount_depth_alignment()
         sql = translate_query(query)
@@ -167,7 +167,7 @@ class TestQ36Q37MercenaryHistorian:
 
     def test_query_37_magic_number_distribution(self):
         """Test Q37: Magic Number Distribution (HISTORIAN - Temporal Patterns)."""
-        from examples.phase2_queries import query_37_magic_number_distribution
+        from examples.pricing_intelligence_queries import query_37_magic_number_distribution
 
         query = query_37_magic_number_distribution()
         sql = translate_query(query)
@@ -191,7 +191,7 @@ class TestQ38Q41ArchitectInflationReconnaissance:
 
     def test_query_38_same_store_inflation_rate(self):
         """Test Q38: Same-Store Inflation Rate (ARCHITECT - Temporal Inflation)."""
-        from examples.phase3_queries import query_38_same_store_inflation_rate
+        from examples.pricing_intelligence_queries import query_38_same_store_inflation_rate
 
         query = query_38_same_store_inflation_rate()
         sql = translate_query(query)
@@ -215,7 +215,7 @@ class TestQ38Q41ArchitectInflationReconnaissance:
 
     def test_query_39_entry_level_creep(self):
         """Test Q39: Entry-Level Creep (ARCHITECT - Market Floor Tracking)."""
-        from examples.phase3_queries import query_39_entry_level_creep
+        from examples.pricing_intelligence_queries import query_39_entry_level_creep
 
         query = query_39_entry_level_creep()
         sql = translate_query(query)
@@ -239,7 +239,7 @@ class TestQ38Q41ArchitectInflationReconnaissance:
 
     def test_query_40_semantic_keyword_scrape(self):
         """Test Q40: Semantic Keyword Scrape (ARCHITECT - Manual Matching)."""
-        from examples.phase3_queries import query_40_semantic_keyword_scrape
+        from examples.pricing_intelligence_queries import query_40_semantic_keyword_scrape
 
         query = query_40_semantic_keyword_scrape()
         sql = translate_query(query)
@@ -262,7 +262,7 @@ class TestQ38Q41ArchitectInflationReconnaissance:
 
     def test_query_41_new_arrival_survival_rate(self):
         """Test Q41: New Arrival Survival Rate (ARCHITECT - Velocity Inference)."""
-        from examples.phase3_queries import query_41_new_arrival_survival_rate
+        from examples.pricing_intelligence_queries import query_41_new_arrival_survival_rate
 
         query = query_41_new_arrival_survival_rate()
         sql = translate_query(query)
@@ -289,21 +289,21 @@ class TestQ30Q41Serialization:
 
     def test_all_q30_q41_serialize(self):
         """Test JSON serialization of all Q30-Q41 queries."""
-        from examples import phase1_queries, phase2_queries, phase3_queries
+        from examples import pricing_intelligence_queries
 
         query_functions = [
-            phase1_queries.query_30_index_drift_check,
-            phase1_queries.query_31_average_selling_price_gap,
-            phase1_queries.query_32_sku_violation_scan,
-            phase1_queries.query_33_unnecessary_discount_finder,
-            phase1_queries.query_34_anchor_check,
-            phase1_queries.query_35_ad_hoc_keyword_scrape,
-            phase2_queries.query_36_discount_depth_alignment,
-            phase2_queries.query_37_magic_number_distribution,
-            phase3_queries.query_38_same_store_inflation_rate,
-            phase3_queries.query_39_entry_level_creep,
-            phase3_queries.query_40_semantic_keyword_scrape,
-            phase3_queries.query_41_new_arrival_survival_rate,
+            pricing_intelligence_queries.query_30_index_drift_check,
+            pricing_intelligence_queries.query_31_average_selling_price_gap,
+            pricing_intelligence_queries.query_32_sku_violation_scan,
+            pricing_intelligence_queries.query_33_unnecessary_discount_finder,
+            pricing_intelligence_queries.query_34_anchor_check,
+            pricing_intelligence_queries.query_35_ad_hoc_keyword_scrape,
+            pricing_intelligence_queries.query_36_discount_depth_alignment,
+            pricing_intelligence_queries.query_37_magic_number_distribution,
+            pricing_intelligence_queries.query_38_same_store_inflation_rate,
+            pricing_intelligence_queries.query_39_entry_level_creep,
+            pricing_intelligence_queries.query_40_semantic_keyword_scrape,
+            pricing_intelligence_queries.query_41_new_arrival_survival_rate,
         ]
 
         for query_func in query_functions:
@@ -320,21 +320,21 @@ class TestQ30Q41Coverage:
 
     def test_all_q30_q41_generate_valid_sql(self):
         """Test that all 12 Q30-Q41 queries generate valid SQL."""
-        from examples import phase1_queries, phase2_queries, phase3_queries
+        from examples import pricing_intelligence_queries
 
         queries = [
-            phase1_queries.query_30_index_drift_check,
-            phase1_queries.query_31_average_selling_price_gap,
-            phase1_queries.query_32_sku_violation_scan,
-            phase1_queries.query_33_unnecessary_discount_finder,
-            phase1_queries.query_34_anchor_check,
-            phase1_queries.query_35_ad_hoc_keyword_scrape,
-            phase2_queries.query_36_discount_depth_alignment,
-            phase2_queries.query_37_magic_number_distribution,
-            phase3_queries.query_38_same_store_inflation_rate,
-            phase3_queries.query_39_entry_level_creep,
-            phase3_queries.query_40_semantic_keyword_scrape,
-            phase3_queries.query_41_new_arrival_survival_rate,
+            pricing_intelligence_queries.query_30_index_drift_check,
+            pricing_intelligence_queries.query_31_average_selling_price_gap,
+            pricing_intelligence_queries.query_32_sku_violation_scan,
+            pricing_intelligence_queries.query_33_unnecessary_discount_finder,
+            pricing_intelligence_queries.query_34_anchor_check,
+            pricing_intelligence_queries.query_35_ad_hoc_keyword_scrape,
+            pricing_intelligence_queries.query_36_discount_depth_alignment,
+            pricing_intelligence_queries.query_37_magic_number_distribution,
+            pricing_intelligence_queries.query_38_same_store_inflation_rate,
+            pricing_intelligence_queries.query_39_entry_level_creep,
+            pricing_intelligence_queries.query_40_semantic_keyword_scrape,
+            pricing_intelligence_queries.query_41_new_arrival_survival_rate,
         ]
 
         for query_func in queries:
@@ -348,26 +348,26 @@ class TestQ30Q41Coverage:
 
     def test_matched_vs_unmatched_coverage(self):
         """Test that Q30-Q41 include both matched and unmatched variants."""
-        from examples import phase1_queries, phase2_queries, phase3_queries
+        from examples import pricing_intelligence_queries
 
         # Matched queries (require exact_matches table)
         matched_queries = [
-            phase1_queries.query_30_index_drift_check,
-            phase1_queries.query_32_sku_violation_scan,
-            phase1_queries.query_33_unnecessary_discount_finder,
-            phase1_queries.query_34_anchor_check,
-            phase2_queries.query_36_discount_depth_alignment,
-            phase3_queries.query_38_same_store_inflation_rate,
+            pricing_intelligence_queries.query_30_index_drift_check,
+            pricing_intelligence_queries.query_32_sku_violation_scan,
+            pricing_intelligence_queries.query_33_unnecessary_discount_finder,
+            pricing_intelligence_queries.query_34_anchor_check,
+            pricing_intelligence_queries.query_36_discount_depth_alignment,
+            pricing_intelligence_queries.query_38_same_store_inflation_rate,
         ]
 
         # Unmatched queries (no exact_matches table)
         unmatched_queries = [
-            phase1_queries.query_31_average_selling_price_gap,
-            phase1_queries.query_35_ad_hoc_keyword_scrape,
-            phase2_queries.query_37_magic_number_distribution,
-            phase3_queries.query_39_entry_level_creep,
-            phase3_queries.query_40_semantic_keyword_scrape,
-            phase3_queries.query_41_new_arrival_survival_rate,
+            pricing_intelligence_queries.query_31_average_selling_price_gap,
+            pricing_intelligence_queries.query_35_ad_hoc_keyword_scrape,
+            pricing_intelligence_queries.query_37_magic_number_distribution,
+            pricing_intelligence_queries.query_39_entry_level_creep,
+            pricing_intelligence_queries.query_40_semantic_keyword_scrape,
+            pricing_intelligence_queries.query_41_new_arrival_survival_rate,
         ]
 
         # Verify matched queries use exact_matches
