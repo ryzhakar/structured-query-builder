@@ -1686,6 +1686,357 @@ def query_14_global_floor_stress_test():
     )
 
 
+
+def query_32_sku_violation_scan():
+    """
+    MATCHED: Detect MAP (Minimum Advertised Price) violations on matched products.
+
+    Intelligence Model Mapping:
+        Archetype: ENFORCER
+        Concern: MAP Policing
+        Variant: Matched Execution
+        Query Name: "The SKU Violation Scan"
+
+    Business Value:
+        "Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?"
+        Evidence packet: 'They are breaking MAP on exactly these 5 items.'
+
+    Action Trigger:
+        If violations detected → Generate evidence packet for vendor enforcement
+        If violations > 5 → Escalate to brand rep / legal
+
+    Pattern:
+        Uses exact_matches to identify specific SKU violations where competitor
+        price drops below MAP threshold. More precise than unmatched brand floor scan.
+
+    Note:
+        This example uses regular_price as MAP proxy. Production needs actual MAP table.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+            BinaryArithmetic(
+                left_column=Column.regular_price,
+                left_table_alias="my",
+                operator=ArithmeticOp.subtract,
+                right_column=Column.markdown_price,
+                right_table_alias="comp",
+                alias="map_violation_amount",
+            ),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.exact_matches,
+                    table_alias="m",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="m"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.product_offers,
+                    table_alias="comp",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="m"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+            ],
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us",
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="comp"),
+                            operator=ComparisonOp.ne,
+                            value="Us",
+                        ),
+                        ColumnComparison(
+                            left_column=QualifiedColumn(column=Column.markdown_price, table_alias="comp"),
+                            operator=ComparisonOp.lt,
+                            right_column=QualifiedColumn(column=Column.regular_price, table_alias="my"),
+                        ),
+                    ],
+                    logic=LogicOp.and_,
+                )
+            ],
+            group_logic=LogicOp.and_,
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.markdown_price, direction=Direction.asc, table_alias="comp"),
+            ]
+        ),
+        limit=LimitClause(limit=100),
+    )
+
+
+
+def query_33_unnecessary_discount_finder():
+    """
+    MATCHED: Find products where we're discounting below competitor price unnecessarily.
+
+    Intelligence Model Mapping:
+        Archetype: PREDATOR
+        Concern: Headroom Discovery
+        Variant: Matched Execution
+        Query Name: "The Unnecessary Discount Finder"
+
+    Business Value:
+        "Are we pricing lower than the market floor unnecessarily?"
+        Correction: 'Raise these 40 items by $5 to match them.'
+
+    Action Trigger:
+        If my_price < comp_price AND my_price < my_regular → Raise price to match competitor
+        Potential margin recovery without losing competitive position.
+
+    Pattern:
+        Identifies margin recovery opportunities where we've over-discounted.
+        Both vendors at same final price, but we discounted more = lost margin.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+            BinaryArithmetic(
+                left_column=Column.markdown_price,
+                left_table_alias="comp",
+                operator=ArithmeticOp.subtract,
+                right_column=Column.markdown_price,
+                right_table_alias="my",
+                alias="price_headroom",
+            ),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.exact_matches,
+                    table_alias="m",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="m"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.product_offers,
+                    table_alias="comp",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="m"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+            ],
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us",
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="comp"),
+                            operator=ComparisonOp.ne,
+                            value="Us",
+                        ),
+                        ColumnComparison(
+                            left_column=QualifiedColumn(column=Column.markdown_price, table_alias="my"),
+                            operator=ComparisonOp.lt,
+                            right_column=QualifiedColumn(column=Column.markdown_price, table_alias="comp"),
+                        ),
+                        ColumnComparison(
+                            left_column=QualifiedColumn(column=Column.markdown_price, table_alias="my"),
+                            operator=ComparisonOp.lt,
+                            right_column=QualifiedColumn(column=Column.regular_price, table_alias="my"),
+                        ),
+                    ],
+                    logic=LogicOp.and_,
+                )
+            ],
+            group_logic=LogicOp.and_,
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.markdown_price, direction=Direction.desc, table_alias="comp"),
+            ]
+        ),
+        limit=LimitClause(limit=100),
+    )
+
+
+
+def query_34_anchor_check():
+    """
+    MATCHED: Compare regular prices to identify optical discount value disadvantages.
+
+    Intelligence Model Mapping:
+        Archetype: MERCENARY
+        Concern: Optical Dominance
+        Variant: Matched Execution
+        Query Name: "The Anchor Check"
+
+    Business Value:
+        "Who looks like they have the better deal (bigger discount)?"
+        Example: Both at $100 final price, but they say "Was $150", we say "Was $110"
+        Their deal looks better. Adjustment: 'Boost our Regular Price on SKU X.'
+
+    Action Trigger:
+        If my_regular < their_regular AND markdown_price_equal → Inflate regular price
+        Psychology: Customers perceive larger nominal discounts as better deals.
+
+    Pattern:
+        Identifies cases where competitor has higher anchor price, creating
+        perception of better value even at same final price.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="comp")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+            BinaryArithmetic(
+                left_column=Column.regular_price,
+                left_table_alias="comp",
+                operator=ArithmeticOp.subtract,
+                right_column=Column.regular_price,
+                right_table_alias="my",
+                alias="anchor_gap",
+            ),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.exact_matches,
+                    table_alias="m",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="m"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.product_offers,
+                    table_alias="comp",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="m"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+            ],
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us",
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="comp"),
+                            operator=ComparisonOp.ne,
+                            value="Us",
+                        ),
+                        ColumnComparison(
+                            left_column=QualifiedColumn(column=Column.regular_price, table_alias="my"),
+                            operator=ComparisonOp.lt,
+                            right_column=QualifiedColumn(column=Column.regular_price, table_alias="comp"),
+                        ),
+                    ],
+                    logic=LogicOp.and_,
+                )
+            ],
+            group_logic=LogicOp.and_,
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.regular_price, direction=Direction.desc, table_alias="comp"),
+            ]
+        ),
+        limit=LimitClause(limit=100),
+    )
+
+
 def query_35_ad_hoc_keyword_scrape():
     """
     UNMATCHED: Calculate market price for products matching keyword pattern.
@@ -1755,355 +2106,102 @@ def query_35_ad_hoc_keyword_scrape():
         ),
     )
 
-
-def query_34_anchor_check():
+def query_30_index_drift_check():
     """
-    MATCHED: Compare regular prices to identify optical discount value disadvantages.
-
-    Intelligence Model Mapping:
-        Archetype: MERCENARY
-        Concern: Optical Dominance
-        Variant: Matched Execution
-        Query Name: "The Anchor Check"
-
-    Business Value:
-        "Who looks like they have the better deal (bigger discount)?"
-        Example: Both at $100 final price, but they say "Was $150", we say "Was $110"
-        Their deal looks better. Adjustment: 'Boost our Regular Price on SKU X.'
-
-    Action Trigger:
-        If my_regular < their_regular AND markdown_price_equal → Inflate regular price
-        Psychology: Customers perceive larger nominal discounts as better deals.
-
-    Pattern:
-        Identifies cases where competitor has higher anchor price, creating
-        perception of better value even at same final price.
-    """
-    return Query(
-        select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.regular_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.regular_price, table_alias="comp")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
-            ),
-            # Show anchor gap
-            ComputedExpr(
-                expression=CompoundArithmetic(
-                    left=QualifiedColumn(
-                        column=Column.regular_price, table_alias="comp"
-                    ),
-                    operator=ArithmeticOp.subtract,
-                    right=QualifiedColumn(
-                        column=Column.regular_price, table_alias="my"
-                    ),
-                ),
-                alias="anchor_gap",
-            ),
-        ],
-        from_=FromClause(table=Table.product_offers, alias="my"),
-        joins=[
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.exact_matches,
-                alias="m",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.id, table_alias="my"),
-                    right=QualifiedColumn(column=Column.source_id, table_alias="m"),
-                ),
-            ),
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.product_offers,
-                alias="comp",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.target_id, table_alias="m"),
-                    right=QualifiedColumn(column=Column.id, table_alias="comp"),
-                ),
-            ),
-        ],
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
-                    conditions=[
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="my"
-                            ),
-                            operator=ComparisonOp.eq,
-                            value="Us",
-                        ),
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="comp"
-                            ),
-                            operator=ComparisonOp.ne,
-                            value="Us",
-                        ),
-                        # My regular < their regular (we have weaker anchor)
-                        ColumnComparison(
-                            left_column=QualifiedColumn(
-                                column=Column.regular_price, table_alias="my"
-                            ),
-                            operator=ComparisonOp.lt,
-                            right_column=QualifiedColumn(
-                                column=Column.regular_price, table_alias="comp"
-                            ),
-                        ),
-                    ],
-                    logic=LogicOp.and_,
-                )
-            ],
-            group_logic=LogicOp.and_,
-        ),
-        order_by=OrderByClause(
-            items=[
-                # Order by anchor gap desc to show biggest perception gaps
-                OrderByItem(
-                    column=Column.regular_price,
-                    direction=Direction.desc,
-                    table_alias="comp",
-                ),
-            ]
-        ),
-        limit=LimitClause(limit=100),
-    )
-
-
-def query_33_unnecessary_discount_finder():
-    """
-    MATCHED: Find products where we're discounting below competitor price unnecessarily.
-
-    Intelligence Model Mapping:
-        Archetype: PREDATOR
-        Concern: Headroom Discovery
-        Variant: Matched Execution
-        Query Name: "The Unnecessary Discount Finder"
-
-    Business Value:
-        "Are we pricing lower than the market floor unnecessarily?"
-        Correction: 'Raise these 40 items by $5 to match them.'
-
-    Action Trigger:
-        If my_price < comp_price AND my_price < my_regular → Raise price to match competitor
-        Potential margin recovery without losing competitive position.
-
-    Pattern:
-        Identifies margin recovery opportunities where we've over-discounted.
-        Both vendors at same final price, but we discounted more = lost margin.
-    """
-    return Query(
-        select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.regular_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
-            ),
-            # Show headroom opportunity
-            ComputedExpr(
-                expression=CompoundArithmetic(
-                    left=QualifiedColumn(
-                        column=Column.markdown_price, table_alias="comp"
-                    ),
-                    operator=ArithmeticOp.subtract,
-                    right=QualifiedColumn(
-                        column=Column.markdown_price, table_alias="my"
-                    ),
-                ),
-                alias="price_headroom",
-            ),
-        ],
-        from_=FromClause(table=Table.product_offers, alias="my"),
-        joins=[
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.exact_matches,
-                alias="m",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.id, table_alias="my"),
-                    right=QualifiedColumn(column=Column.source_id, table_alias="m"),
-                ),
-            ),
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.product_offers,
-                alias="comp",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.target_id, table_alias="m"),
-                    right=QualifiedColumn(column=Column.id, table_alias="comp"),
-                ),
-            ),
-        ],
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
-                    conditions=[
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="my"
-                            ),
-                            operator=ComparisonOp.eq,
-                            value="Us",
-                        ),
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="comp"
-                            ),
-                            operator=ComparisonOp.ne,
-                            value="Us",
-                        ),
-                        # My price < competitor price
-                        ColumnComparison(
-                            left_column=QualifiedColumn(
-                                column=Column.markdown_price, table_alias="my"
-                            ),
-                            operator=ComparisonOp.lt,
-                            right_column=QualifiedColumn(
-                                column=Column.markdown_price, table_alias="comp"
-                            ),
-                        ),
-                        # My price < my regular (we are discounting)
-                        ColumnComparison(
-                            left_column=QualifiedColumn(
-                                column=Column.markdown_price, table_alias="my"
-                            ),
-                            operator=ComparisonOp.lt,
-                            right_column=QualifiedColumn(
-                                column=Column.regular_price, table_alias="my"
-                            ),
-                        ),
-                    ],
-                    logic=LogicOp.and_,
-                )
-            ],
-            group_logic=LogicOp.and_,
-        ),
-        order_by=OrderByClause(
-            items=[
-                # Order by headroom desc to show biggest opportunities first
-                OrderByItem(
-                    column=Column.markdown_price,
-                    direction=Direction.desc,
-                    table_alias="comp",
-                ),
-            ]
-        ),
-        limit=LimitClause(limit=100),
-    )
-
-
-def query_32_sku_violation_scan():
-    """
-    MATCHED: Detect MAP (Minimum Advertised Price) violations on matched products.
+    MATCHED: Identify matched products where our price is drifting >5% above competitor.
 
     Intelligence Model Mapping:
         Archetype: ENFORCER
-        Concern: MAP Policing
+        Concern: Parity Maintenance
         Variant: Matched Execution
-        Query Name: "The SKU Violation Scan"
+        Query Name: "The Index Drift Check"
 
     Business Value:
-        "Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?"
-        Evidence packet: 'They are breaking MAP on exactly these 5 items.'
+        "Are we drifting too far above the market price, causing us to lose relevance?"
+        Precise list: 'SKU #123 is 7% too expensive.'
 
     Action Trigger:
-        If violations detected → Generate evidence packet for vendor enforcement
-        If violations > 5 → Escalate to brand rep / legal
+        If price_ratio > 1.05 → Flag for repricing
+        If price_ratio > 1.15 → Emergency price correction required
 
     Pattern:
-        Uses exact_matches to identify specific SKU violations where competitor
-        price drops below MAP threshold. More precise than unmatched brand floor scan.
-
-    Note:
-        This example uses regular_price as MAP proxy. Production needs actual MAP table.
+        SELECT my.*, comp.*, (my_price / comp_price) as price_ratio
+        WHERE my_price / comp_price > 1.05
     """
     return Query(
         select=[
             ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
             ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
             ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.regular_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
-            ),
-            # Show violation amount
-            ComputedExpr(
-                expression=CompoundArithmetic(
-                    left=QualifiedColumn(column=Column.regular_price, table_alias="my"),
-                    operator=ArithmeticOp.subtract,
-                    right=QualifiedColumn(
-                        column=Column.markdown_price, table_alias="comp"
-                    ),
-                ),
-                alias="map_violation_amount",
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+            BinaryArithmetic(
+                left_column=Column.markdown_price,
+                left_table_alias="my",
+                operator=ArithmeticOp.divide,
+                right_column=Column.markdown_price,
+                right_table_alias="comp",
+                alias="price_ratio",
             ),
         ],
-        from_=FromClause(table=Table.product_offers, alias="my"),
-        joins=[
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.exact_matches,
-                alias="m",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.id, table_alias="my"),
-                    right=QualifiedColumn(column=Column.source_id, table_alias="m"),
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.exact_matches,
+                    table_alias="m",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="m"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
                 ),
-            ),
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.product_offers,
-                alias="comp",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.target_id, table_alias="m"),
-                    right=QualifiedColumn(column=Column.id, table_alias="comp"),
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.product_offers,
+                    table_alias="comp",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="m"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
                 ),
-            ),
-        ],
+            ],
+        ),
         where=WhereL1(
             groups=[
                 ConditionGroup(
                     conditions=[
                         SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="my"
-                            ),
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
                             operator=ComparisonOp.eq,
                             value="Us",
                         ),
                         SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="comp"
-                            ),
+                            column=QualifiedColumn(column=Column.vendor, table_alias="comp"),
                             operator=ComparisonOp.ne,
                             value="Us",
                         ),
-                        # Competitor price below our regular price (MAP proxy)
                         ColumnComparison(
-                            left_column=QualifiedColumn(
-                                column=Column.markdown_price, table_alias="comp"
-                            ),
-                            operator=ComparisonOp.lt,
-                            right_column=QualifiedColumn(
-                                column=Column.regular_price, table_alias="my"
-                            ),
+                            left_column=QualifiedColumn(column=Column.markdown_price, table_alias="my"),
+                            operator=ComparisonOp.gt,
+                            right_column=QualifiedColumn(column=Column.markdown_price, table_alias="comp"),
                         ),
                     ],
                     logic=LogicOp.and_,
@@ -2113,11 +2211,7 @@ def query_32_sku_violation_scan():
         ),
         order_by=OrderByClause(
             items=[
-                OrderByItem(
-                    column=Column.markdown_price,
-                    direction=Direction.asc,
-                    table_alias="comp",
-                ),
+                OrderByItem(column=Column.markdown_price, direction=Direction.desc, table_alias="my"),
             ]
         ),
         limit=LimitClause(limit=100),
@@ -2167,126 +2261,6 @@ def query_31_average_selling_price_gap():
                 OrderByItem(column=Column.vendor, direction=Direction.asc),
             ]
         ),
-    )
-
-
-def query_30_index_drift_check():
-    """
-    MATCHED: Identify matched products where our price is drifting >5% above competitor.
-
-    Intelligence Model Mapping:
-        Archetype: ENFORCER
-        Concern: Parity Maintenance
-        Variant: Matched Execution
-        Query Name: "The Index Drift Check"
-
-    Business Value:
-        "Are we drifting too far above the market price, causing us to lose relevance?"
-        Precise list: 'SKU #123 is 7% too expensive.'
-
-    Action Trigger:
-        If price_ratio > 1.05 → Flag for repricing
-        If price_ratio > 1.15 → Emergency price correction required
-
-    Pattern:
-        SELECT my.*, comp.*, (my_price / comp_price) as price_ratio
-        WHERE my_price / comp_price > 1.05
-    """
-    return Query(
-        select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
-            ),
-            # Calculate price ratio: my_price / comp_price
-            ComputedExpr(
-                expression=CompoundArithmetic(
-                    left=QualifiedColumn(
-                        column=Column.markdown_price, table_alias="my"
-                    ),
-                    operator=ArithmeticOp.divide,
-                    right=QualifiedColumn(
-                        column=Column.markdown_price, table_alias="comp"
-                    ),
-                ),
-                alias="price_ratio",
-            ),
-        ],
-        from_=FromClause(table=Table.product_offers, alias="my"),
-        joins=[
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.exact_matches,
-                alias="m",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.id, table_alias="my"),
-                    right=QualifiedColumn(column=Column.source_id, table_alias="m"),
-                ),
-            ),
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.product_offers,
-                alias="comp",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.target_id, table_alias="m"),
-                    right=QualifiedColumn(column=Column.id, table_alias="comp"),
-                ),
-            ),
-        ],
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
-                    conditions=[
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="my"
-                            ),
-                            operator=ComparisonOp.eq,
-                            value="Us",
-                        ),
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="comp"
-                            ),
-                            operator=ComparisonOp.ne,
-                            value="Us",
-                        ),
-                        # Filter for price ratio > 1.05 using arithmetic comparison
-                        ArithmeticCondition(
-                            left=QualifiedColumn(
-                                column=Column.markdown_price, table_alias="my"
-                            ),
-                            operator=ComparisonOp.gt,
-                            right=CompoundArithmetic(
-                                left=QualifiedColumn(
-                                    column=Column.markdown_price, table_alias="comp"
-                                ),
-                                operator=ArithmeticOp.multiply,
-                                right=1.05,
-                            ),
-                        ),
-                    ],
-                    logic=LogicOp.and_,
-                )
-            ],
-            group_logic=LogicOp.and_,
-        ),
-        order_by=OrderByClause(
-            items=[
-                # Order by price_ratio desc to show worst offenders first
-                OrderByItem(
-                    column=Column.markdown_price,
-                    direction=Direction.desc,
-                    table_alias="my",
-                ),
-            ]
-        ),
-        limit=LimitClause(limit=100),
     )
 
 

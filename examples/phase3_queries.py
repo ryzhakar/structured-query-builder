@@ -449,6 +449,9 @@ def query_29_inventory_velocity_detector():
     )
 
 
+
+
+
 def query_38_same_store_inflation_rate():
     """
     MATCHED: Calculate inflation rate on matched products over time.
@@ -486,48 +489,49 @@ def query_38_same_store_inflation_rate():
                 column=Column.previous_price,
                 alias="historical_avg_price",
             ),
-            AggregateExpr(
-                function=AggregateFunc.count, column=None, alias="product_count"
-            ),
+            AggregateExpr(function=AggregateFunc.count, column=None, alias="product_count"),
         ],
-        from_=DerivedTable(
-            query=Query(
+        from_=FromClause(
+            derived=DerivedTable(
                 select=[
                     ColumnExpr(source=QualifiedColumn(column=Column.id)),
                     ColumnExpr(source=QualifiedColumn(column=Column.category)),
                     ColumnExpr(source=QualifiedColumn(column=Column.markdown_price)),
                     ColumnExpr(source=QualifiedColumn(column=Column.updated_at)),
-                    # LAG to get previous price (simplified - would need partition by time periods)
                     WindowExpr(
                         function=WindowFunc.lag,
                         column=Column.markdown_price,
                         partition_by=[Column.id],
                         order_by=[
-                            OrderByItem(
-                                column=Column.updated_at, direction=Direction.asc
-                            )
+                            OrderByItem(column=Column.updated_at, direction=Direction.asc)
                         ],
-                        offset=52,  # ~52 weeks ago
+                        offset=52,
                         alias="previous_price",
                     ),
                 ],
-                from_=FromClause(
-                    table=Table.product_offers,
-                ),
+                from_table=Table.product_offers,
                 joins=[
-                    JoinClause(
+                    JoinSpec(
                         join_type=JoinType.inner,
                         table=Table.exact_matches,
-                        alias="m",
-                        on=JoinCondition(
-                            left=QualifiedColumn(column=Column.id),
-                            right=QualifiedColumn(
-                                column=Column.source_id, table_alias="m"
-                            ),
-                        ),
+                        table_alias="m",
+                        on_conditions=[
+                            ConditionGroup(
+                                conditions=[
+                                    ColumnComparison(
+                                        left_column=QualifiedColumn(column=Column.id),
+                                        operator=ComparisonOp.eq,
+                                        right_column=QualifiedColumn(
+                                            column=Column.source_id, table_alias="m"
+                                        ),
+                                    )
+                                ],
+                                logic=LogicOp.and_,
+                            )
+                        ],
                     ),
                 ],
-                where=WhereL1(
+                where=WhereL0(
                     groups=[
                         ConditionGroup(
                             conditions=[
@@ -542,25 +546,8 @@ def query_38_same_store_inflation_rate():
                     ],
                     group_logic=LogicOp.and_,
                 ),
-            ),
-            alias="inflation",
-        ),
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
-                    conditions=[
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.previous_price, table_alias="inflation"
-                            ),
-                            operator=ComparisonOp.is_not_null,
-                            value=None,
-                        ),
-                    ],
-                    logic=LogicOp.and_,
-                )
-            ],
-            group_logic=LogicOp.and_,
+                alias="inflation",
+            )
         ),
         group_by=GroupByClause(columns=[Column.category]),
         order_by=OrderByClause(
@@ -773,7 +760,7 @@ def query_41_new_arrival_survival_rate():
                         SimpleCondition(
                             column=QualifiedColumn(column=Column.created_at),
                             operator=ComparisonOp.is_not_null,
-                            value=None,
+                            value="",  # Value ignored by translator for IS NOT NULL
                         ),
                     ],
                     logic=LogicOp.and_,

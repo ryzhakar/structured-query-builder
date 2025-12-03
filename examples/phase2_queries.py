@@ -444,6 +444,128 @@ def query_15_category_margin_proxy():
     )
 
 
+
+def query_36_discount_depth_alignment():
+    """
+    MATCHED: Compare nominal discount amounts to identify optical value gaps.
+
+    Intelligence Model Mapping:
+        Archetype: ARCHITECT
+        Domain: Pricing Architecture
+        Concern: Psychological Anchoring
+        Variant: Matched Execution
+        Query Name: "The Discount Depth Alignment"
+
+    Business Value:
+        "How does the customer perceive value? I need to master the gap between
+        the 'Sticker Price' and the 'Real Price'."
+
+        Example: Both at $100, but they say "Was $150" ($50 off), we say "Was $110" ($10 off).
+        Their deal LOOKS better even though final price is identical.
+
+    Action Trigger:
+        If competitor_discount > my_discount → Inflate regular price to match optical value
+        Psychology: Customers respond to nominal discount amounts, not just final price.
+
+    Pattern:
+        Compare (regular - current) between matched products to identify
+        where competitor has better optical discount value.
+    """
+    return Query(
+        select=[
+            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="my")),
+            ColumnExpr(source=QualifiedColumn(column=Column.regular_price, table_alias="comp")),
+            ColumnExpr(source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")),
+            BinaryArithmetic(
+                left_column=Column.regular_price,
+                left_table_alias="my",
+                operator=ArithmeticOp.subtract,
+                right_column=Column.markdown_price,
+                right_table_alias="my",
+                alias="my_discount_amount",
+            ),
+            BinaryArithmetic(
+                left_column=Column.regular_price,
+                left_table_alias="comp",
+                operator=ArithmeticOp.subtract,
+                right_column=Column.markdown_price,
+                right_table_alias="comp",
+                alias="comp_discount_amount",
+            ),
+        ],
+        from_=FromClause(
+            table=Table.product_offers,
+            table_alias="my",
+            joins=[
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.exact_matches,
+                    table_alias="m",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.id, table_alias="my"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.source_id, table_alias="m"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+                JoinSpec(
+                    join_type=JoinType.inner,
+                    table=Table.product_offers,
+                    table_alias="comp",
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.target_id, table_alias="m"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.id, table_alias="comp"),
+                                )
+                            ],
+                            logic=LogicOp.and_,
+                        )
+                    ],
+                ),
+            ],
+        ),
+        where=WhereL1(
+            groups=[
+                ConditionGroup(
+                    conditions=[
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="my"),
+                            operator=ComparisonOp.eq,
+                            value="Us",
+                        ),
+                        SimpleCondition(
+                            column=QualifiedColumn(column=Column.vendor, table_alias="comp"),
+                            operator=ComparisonOp.ne,
+                            value="Us",
+                        ),
+                    ],
+                    logic=LogicOp.and_,
+                )
+            ],
+            group_logic=LogicOp.and_,
+        ),
+        order_by=OrderByClause(
+            items=[
+                OrderByItem(column=Column.regular_price, direction=Direction.desc, table_alias="comp"),
+            ]
+        ),
+        limit=LimitClause(limit=100),
+    )
+
+
 def query_37_magic_number_distribution():
     """
     UNMATCHED: Analyze markdown patterns to decode competitor pricing psychology.
@@ -510,180 +632,6 @@ def query_37_magic_number_distribution():
                 OrderByItem(column=Column.is_markdown, direction=Direction.desc),
             ]
         ),
-    )
-
-
-def query_36_discount_depth_alignment():
-    """
-    MATCHED: Compare nominal discount amounts to identify optical value gaps.
-
-    Intelligence Model Mapping:
-        Archetype: ARCHITECT
-        Domain: Pricing Architecture
-        Concern: Psychological Anchoring
-        Variant: Matched Execution
-        Query Name: "The Discount Depth Alignment"
-
-    Business Value:
-        "How does the customer perceive value? I need to master the gap between
-        the 'Sticker Price' and the 'Real Price'."
-
-        Example: Both at $100, but they say "Was $150" ($50 off), we say "Was $110" ($10 off).
-        Their deal LOOKS better even though final price is identical.
-
-    Action Trigger:
-        If competitor_discount > my_discount → Inflate regular price to match optical value
-        Psychology: Customers respond to nominal discount amounts, not just final price.
-
-    Pattern:
-        Compare (regular - current) between matched products to identify
-        where competitor has better optical discount value.
-    """
-    return Query(
-        select=[
-            ColumnExpr(source=QualifiedColumn(column=Column.id, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.title, table_alias="my")),
-            ColumnExpr(source=QualifiedColumn(column=Column.brand, table_alias="my")),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.regular_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="my")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.regular_price, table_alias="comp")
-            ),
-            ColumnExpr(
-                source=QualifiedColumn(column=Column.markdown_price, table_alias="comp")
-            ),
-            # My discount amount
-            ComputedExpr(
-                expression=CompoundArithmetic(
-                    left=QualifiedColumn(column=Column.regular_price, table_alias="my"),
-                    operator=ArithmeticOp.subtract,
-                    right=QualifiedColumn(
-                        column=Column.markdown_price, table_alias="my"
-                    ),
-                ),
-                alias="my_discount_amount",
-            ),
-            # Competitor discount amount
-            ComputedExpr(
-                expression=CompoundArithmetic(
-                    left=QualifiedColumn(
-                        column=Column.regular_price, table_alias="comp"
-                    ),
-                    operator=ArithmeticOp.subtract,
-                    right=QualifiedColumn(
-                        column=Column.markdown_price, table_alias="comp"
-                    ),
-                ),
-                alias="comp_discount_amount",
-            ),
-            # Optical gap
-            ComputedExpr(
-                expression=CompoundArithmetic(
-                    left=CompoundArithmetic(
-                        left=QualifiedColumn(
-                            column=Column.regular_price, table_alias="comp"
-                        ),
-                        operator=ArithmeticOp.subtract,
-                        right=QualifiedColumn(
-                            column=Column.markdown_price, table_alias="comp"
-                        ),
-                    ),
-                    operator=ArithmeticOp.subtract,
-                    right=CompoundArithmetic(
-                        left=QualifiedColumn(
-                            column=Column.regular_price, table_alias="my"
-                        ),
-                        operator=ArithmeticOp.subtract,
-                        right=QualifiedColumn(
-                            column=Column.markdown_price, table_alias="my"
-                        ),
-                    ),
-                ),
-                alias="optical_discount_gap",
-            ),
-        ],
-        from_=FromClause(table=Table.product_offers, alias="my"),
-        joins=[
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.exact_matches,
-                alias="m",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.id, table_alias="my"),
-                    right=QualifiedColumn(column=Column.source_id, table_alias="m"),
-                ),
-            ),
-            JoinClause(
-                join_type=JoinType.inner,
-                table=Table.product_offers,
-                alias="comp",
-                on=JoinCondition(
-                    left=QualifiedColumn(column=Column.target_id, table_alias="m"),
-                    right=QualifiedColumn(column=Column.id, table_alias="comp"),
-                ),
-            ),
-        ],
-        where=WhereL1(
-            groups=[
-                ConditionGroup(
-                    conditions=[
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="my"
-                            ),
-                            operator=ComparisonOp.eq,
-                            value="Us",
-                        ),
-                        SimpleCondition(
-                            column=QualifiedColumn(
-                                column=Column.vendor, table_alias="comp"
-                            ),
-                            operator=ComparisonOp.ne,
-                            value="Us",
-                        ),
-                        # Filter: competitor discount > my discount (they look better)
-                        ArithmeticCondition(
-                            left=CompoundArithmetic(
-                                left=QualifiedColumn(
-                                    column=Column.regular_price, table_alias="comp"
-                                ),
-                                operator=ArithmeticOp.subtract,
-                                right=QualifiedColumn(
-                                    column=Column.markdown_price, table_alias="comp"
-                                ),
-                            ),
-                            operator=ComparisonOp.gt,
-                            right=CompoundArithmetic(
-                                left=QualifiedColumn(
-                                    column=Column.regular_price, table_alias="my"
-                                ),
-                                operator=ArithmeticOp.subtract,
-                                right=QualifiedColumn(
-                                    column=Column.markdown_price, table_alias="my"
-                                ),
-                            ),
-                        ),
-                    ],
-                    logic=LogicOp.and_,
-                )
-            ],
-            group_logic=LogicOp.and_,
-        ),
-        order_by=OrderByClause(
-            items=[
-                # Order by optical gap desc to show biggest perception disadvantages
-                OrderByItem(
-                    column=Column.regular_price,
-                    direction=Direction.desc,
-                    table_alias="comp",
-                ),
-            ]
-        ),
-        limit=LimitClause(limit=100),
     )
 
 
