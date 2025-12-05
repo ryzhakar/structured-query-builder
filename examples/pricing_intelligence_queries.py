@@ -14,7 +14,7 @@ ALL QUERIES TESTED AND WORKING.
 
 from structured_query_builder import *
 from structured_query_builder.translator import translate_query
-from structured_query_builder.query_registry import registry
+from structured_query_builder.query_registry import registry, Archetype, ExecutionVariant
 
 # =============================================================================
 # ARCHETYPE 1: ENFORCER - Compliance & Positioning (2 new queries)
@@ -24,9 +24,9 @@ from structured_query_builder.query_registry import registry
 @registry.register(
     query_number=16,
     query_name="The Brand Floor Scan",
-    archetype="ENFORCER",
+    archetype=Archetype.ENFORCER,
     concern="MAP Policing",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?
     """,
@@ -45,9 +45,9 @@ from structured_query_builder.query_registry import registry
 @registry.register(
     query_number=16,
     query_name="The Brand Floor Scan",
-    archetype="ENFORCER",
+    archetype=Archetype.ENFORCER,
     concern="MAP Policing",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?
     """,
@@ -131,9 +131,9 @@ def query_16_map_violations_unmatched():
 @registry.register(
     query_number=17,
     query_name="The Premium Gap Analysis",
-    archetype="ENFORCER",
+    archetype=Archetype.ENFORCER,
     concern="Brand Alignment",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Does our assortment price us out of the 'Middle Class' demographic?
     """,
@@ -271,9 +271,9 @@ def query_17_premium_gap_analysis():
 @registry.register(
     query_number=3,
     query_name="The Category Histogram",
-    archetype="ENFORCER",
+    archetype=Archetype.ENFORCER,
     concern="Brand Alignment",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Does our assortment price us out of the 'Middle Class' demographic?
     """,
@@ -373,9 +373,9 @@ def query_03_category_histogram():
 @registry.register(
     query_number=18,
     query_name="The Supply Chain Failure Detector",
-    archetype="PREDATOR",
+    archetype=Archetype.PREDATOR,
     concern="Monopoly Exploitation",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         If they are out of stock, supply is low. I should raise prices to maximize profit.
     """,
@@ -491,9 +491,9 @@ def query_18_supply_chain_failure_detector():
 @registry.register(
     query_number=19,
     query_name="The Loss-Leader Hunter",
-    archetype="PREDATOR",
+    archetype=Archetype.PREDATOR,
     concern="Bottom Feeding",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Identify 'garbage' low prices that we should ignore to save margin.
     """,
@@ -624,9 +624,9 @@ def query_19_loss_leader_hunter():
 @registry.register(
     query_number=11,
     query_name="The Stockout Gouge",
-    archetype="PREDATOR",
+    archetype=Archetype.PREDATOR,
     concern="Monopoly Exploitation",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         If they are out of stock, supply is low. I should raise prices to maximize profit.
     """,
@@ -771,9 +771,9 @@ def query_11_stockout_gouge():
 @registry.register(
     query_number=12,
     query_name="The Deep Discount Filter",
-    archetype="PREDATOR",
+    archetype=Archetype.PREDATOR,
     concern="Bottom Feeding",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Identify 'garbage' low prices that we should ignore to save margin.
     """,
@@ -923,9 +923,9 @@ def query_12_deep_discount_filter():
 @registry.register(
     query_number=6,
     query_name="The Cluster Floor Check",
-    archetype="PREDATOR",
+    archetype=Archetype.PREDATOR,
     concern="Headroom Discovery",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Are we pricing lower than the market floor unnecessarily?
     """,
@@ -1057,9 +1057,9 @@ def query_06_cluster_floor_check():
 @registry.register(
     query_number=20,
     query_name="The Item Inflation Tracker",
-    archetype="HISTORIAN",
+    archetype=Archetype.HISTORIAN,
     concern="Inflation Tracking",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Has the market accepted a price increase? Can we move the floor up?
     """,
@@ -1210,9 +1210,9 @@ def query_20_category_price_snapshot():
 @registry.register(
     query_number=21,
     query_name="The Category Erosion Index",
-    archetype="HISTORIAN",
+    archetype=Archetype.HISTORIAN,
     concern="Promo Detection",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Did they just launch a campaign, or is this random noise?
     """,
@@ -1296,9 +1296,9 @@ def query_21_promo_erosion_index():
 @registry.register(
     query_number=22,
     query_name="The Brand Volume Drop",
-    archetype="HISTORIAN",
+    archetype=Archetype.HISTORIAN,
     concern="Churn Analysis",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Are they exiting a brand or category? If they are delisting products, we can step in to fill the void.
     """,
@@ -1419,9 +1419,9 @@ def query_22_brand_presence_tracking():
 @registry.register(
     query_number=8,
     query_name="The Slash-and-Burn Alert",
-    archetype="HISTORIAN",
+    archetype=Archetype.HISTORIAN,
     concern="Promo Detection",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Did they just launch a campaign, or is this random noise?
     """,
@@ -1565,9 +1565,9 @@ def query_08_slash_and_burn_alert():
 @registry.register(
     query_number=9,
     query_name="The Minimum Viable Price Lift",
-    archetype="HISTORIAN",
+    archetype=Archetype.HISTORIAN,
     concern="Inflation Tracking",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Has the market accepted a price increase? Can we move the floor up?
     """,
@@ -1639,9 +1639,9 @@ def query_09_minimum_viable_price_lift():
 @registry.register(
     query_number=10,
     query_name="The Assortment Rotation Check",
-    archetype="HISTORIAN",
+    archetype=Archetype.HISTORIAN,
     concern="Churn Analysis",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Are they exiting a brand or category? If they are delisting products, we can step in to fill the void.
     """,
@@ -1759,9 +1759,9 @@ def query_10_assortment_rotation_check():
 @registry.register(
     query_number=13,
     query_name="The Ghost Inventory Check",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Gap Analysis and White Space",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Where are they failing to serve the customer? I will find the empty space in their catalog and fill it.
     """,
@@ -1903,9 +1903,9 @@ def query_13_ghost_inventory_check():
 @registry.register(
     query_number=23,
     query_name="The Discount Depth Distribution",
-    archetype="MERCENARY",
+    archetype=Archetype.MERCENARY,
     concern="Optical Dominance",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Who looks like they have the better deal (bigger discount)?
     """,
@@ -1996,9 +1996,9 @@ def query_23_discount_depth_distribution():
 @registry.register(
     query_number=14,
     query_name="The Global Floor Stress Test",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Cost Model Validation",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         I know my cost (Internal). I see their price (External). If their price is near my cost, either they are losing money, or they buy it cheaper than I do.
     """,
@@ -2082,9 +2082,9 @@ def query_14_global_floor_stress_test():
 @registry.register(
     query_number=32,
     query_name="The SKU Violation Scan",
-    archetype="ENFORCER",
+    archetype=Archetype.ENFORCER,
     concern="MAP Policing",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?
     """,
@@ -2243,9 +2243,9 @@ def query_32_sku_violation_scan():
 @registry.register(
     query_number=33,
     query_name="The Unnecessary Discount Finder",
-    archetype="PREDATOR",
+    archetype=Archetype.PREDATOR,
     concern="Headroom Discovery",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Are we pricing lower than the market floor unnecessarily?
     """,
@@ -2413,9 +2413,9 @@ def query_33_unnecessary_discount_finder():
 @registry.register(
     query_number=34,
     query_name="The Anchor Check",
-    archetype="MERCENARY",
+    archetype=Archetype.MERCENARY,
     concern="Optical Dominance",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Who looks like they have the better deal (bigger discount)?
     """,
@@ -2578,9 +2578,9 @@ def query_34_anchor_check():
 @registry.register(
     query_number=35,
     query_name="The Ad-Hoc Keyword Scrape",
-    archetype="MERCENARY",
+    archetype=Archetype.MERCENARY,
     concern="Keyword Arbitrage",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         What is the 'Street Price' for a specific customer search term?
     """,
@@ -2670,9 +2670,9 @@ def query_35_ad_hoc_keyword_scrape():
 @registry.register(
     query_number=30,
     query_name="The Index Drift Check",
-    archetype="ENFORCER",
+    archetype=Archetype.ENFORCER,
     concern="Parity Maintenance",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Are we drifting too far above the market price, causing us to lose relevance?
     """,
@@ -2828,9 +2828,9 @@ def query_30_index_drift_check():
 @registry.register(
     query_number=31,
     query_name="The Average Selling Price (ASP) Gap",
-    archetype="ENFORCER",
+    archetype=Archetype.ENFORCER,
     concern="Parity Maintenance",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Are we drifting too far above the market price, causing us to lose relevance?
     """,
@@ -2974,9 +2974,9 @@ from structured_query_builder.translator import translate_query
 @registry.register(
     query_number=24,
     query_name="The Commoditization Coefficient",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Assortment Overlap and Exclusivity",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         I need to know exactly how unique my business is. If I am selling the same things as them, I am a commodity. If I am selling different things, I am a destination.
     """,
@@ -3119,9 +3119,9 @@ def query_24_commoditization_coefficient():
 @registry.register(
     query_number=25,
     query_name="The Brand Weighting Fingerprint",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Assortment Overlap and Exclusivity",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         I need to know exactly how unique my business is. If I am selling the same things as them, I am a commodity. If I am selling different things, I am a destination.
     """,
@@ -3223,9 +3223,9 @@ def query_25_brand_weighting_fingerprint():
 @registry.register(
     query_number=26,
     query_name="The Price Ladder Void",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Gap Analysis and White Space",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Where are they failing to serve the customer? I will find the empty space in their catalog and fill it.
     """,
@@ -3325,9 +3325,9 @@ def query_26_price_ladder_void_scanner():
 @registry.register(
     query_number=15,
     query_name="The Category Margin Proxy",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Margin Potential Discovery",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Where is the market 'sleepy'? Where are prices stable and high, allowing me to take margin without fighting?
     """,
@@ -3492,9 +3492,9 @@ def query_15_category_margin_proxy():
 @registry.register(
     query_number=36,
     query_name="The Discount Depth Alignment",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Psychological Anchoring",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         How does the customer perceive value? I need to master the gap between the 'Sticker Price' and the 'Real Price'.
     """,
@@ -3660,9 +3660,9 @@ def query_36_discount_depth_alignment():
 @registry.register(
     query_number=37,
     query_name="The Magic Number Distribution",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Psychological Anchoring",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         How does the customer perceive value? I need to master the gap between the 'Sticker Price' and the 'Real Price'.
     """,
@@ -3804,9 +3804,9 @@ from structured_query_builder.translator import translate_query
 @registry.register(
     query_number=27,
     query_name="The Vendor Fairness Audit",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Cost Model Validation",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         I know my cost (Internal). I see their price (External). If their price is near my cost, either they are losing money, or they buy it cheaper than I do.
     """,
@@ -3955,9 +3955,9 @@ def query_27_vendor_fairness_audit():
 @registry.register(
     query_number=28,
     query_name="The Safe Haven Scan",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Margin Potential Discovery",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Where is the market 'sleepy'? Where are prices stable and high, allowing me to take margin without fighting?
     """,
@@ -4124,9 +4124,9 @@ def query_28_safe_haven_scanner():
 @registry.register(
     query_number=29,
     query_name="The High-Velocity Detector",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Inventory Velocity Inference",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         I want to know what they are selling *fast*, so I can copy it. I will infer sales velocity by watching their inventory churn.
     """,
@@ -4304,9 +4304,9 @@ def query_29_inventory_velocity_detector():
 @registry.register(
     query_number=38,
     query_name="The Same-Store Inflation Rate",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Inflation and Trends",
-    variant="Matched Execution",
+    variant=ExecutionVariant.MATCHED,
     universal_reasoning="""
         Is the market getting more expensive or cheaper? I need to ride the wave, not swim against it.
     """,
@@ -4436,9 +4436,9 @@ def query_38_same_store_inflation_rate():
 @registry.register(
     query_number=39,
     query_name="The Entry-Level Creep",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Inflation and Trends",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         Is the market getting more expensive or cheaper? I need to ride the wave, not swim against it.
     """,
@@ -4524,9 +4524,9 @@ def query_39_entry_level_creep():
 @registry.register(
     query_number=40,
     query_name="The Semantic Keyword Scrape",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Semantic Clustering Manual Matching",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         The database doesn't have matches? I don't care. I will conceptually match them using language patterns.
     """,
@@ -4628,9 +4628,9 @@ def query_40_semantic_keyword_scrape():
 @registry.register(
     query_number=41,
     query_name="The 'New Arrival' Survival Rate",
-    archetype="ARCHITECT",
+    archetype=Archetype.ARCHITECT,
     concern="Inventory Velocity Inference",
-    variant="Unmatched Approximation",
+    variant=ExecutionVariant.UNMATCHED,
     universal_reasoning="""
         I want to know what they are selling *fast*, so I can copy it. I will infer sales velocity by watching their inventory churn.
     """,

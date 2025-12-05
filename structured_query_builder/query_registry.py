@@ -4,16 +4,42 @@ Query Registry: Metadata-tagged query catalog with programmatic filtering.
 This module provides a decorator-based registry system for all pricing intelligence
 queries, allowing queries to be tagged with rich metadata from the intelligence models
 and enabling programmatic access and filtering.
+
+IMPORTANT: This module is completely separate from query building models.
+Registry enums and models are independent of the core SQL schema.
 """
 
+from enum import StrEnum
 from textwrap import dedent
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 # =============================================================================
-# Metadata Models
+# Registry Enums (Separate from Query Building)
+# =============================================================================
+
+
+class Archetype(StrEnum):
+    """Query archetype classification."""
+
+    ENFORCER = "ENFORCER"
+    PREDATOR = "PREDATOR"
+    HISTORIAN = "HISTORIAN"
+    MERCENARY = "MERCENARY"
+    ARCHITECT = "ARCHITECT"
+
+
+class ExecutionVariant(StrEnum):
+    """Query execution pattern variant."""
+
+    MATCHED = "Matched Execution"
+    UNMATCHED = "Unmatched Approximation"
+
+
+# =============================================================================
+# Metadata Models (Separate from Query Building)
 # =============================================================================
 
 
@@ -28,13 +54,9 @@ class QueryMetadata(BaseModel):
     query_name: str = Field(..., description="Intelligence model query name")
 
     # Intelligence model classification
-    archetype: Literal[
-        "ENFORCER", "PREDATOR", "HISTORIAN", "MERCENARY", "ARCHITECT"
-    ] = Field(..., description="Query archetype")
+    archetype: Archetype = Field(..., description="Query archetype")
     concern: str = Field(..., description="Business concern addressed")
-    variant: Literal["Matched Execution", "Unmatched Approximation"] = Field(
-        ..., description="Execution pattern"
-    )
+    variant: ExecutionVariant = Field(..., description="Execution pattern")
 
     # Business context
     universal_reasoning: str = Field(
@@ -72,9 +94,9 @@ class QueryRegistry:
         self,
         query_number: int,
         query_name: str,
-        archetype: Literal["ENFORCER", "PREDATOR", "HISTORIAN", "MERCENARY", "ARCHITECT"],
+        archetype: Archetype,
         concern: str,
-        variant: Literal["Matched Execution", "Unmatched Approximation"],
+        variant: ExecutionVariant,
         universal_reasoning: str,
         model_logic: str,
         model_outcome: str,
