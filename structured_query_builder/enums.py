@@ -57,6 +57,16 @@ class Column(str, Enum):
     availability_changes = "availability_changes"
     current_min_price = "current_min_price"
     historical_min_price = "historical_min_price"
+    offer_count = "offer_count"
+    previous_count = "previous_count"
+    count_change_pct = "count_change_pct"
+    price_gap = "price_gap"
+    price_volatility_52w = "price_volatility_52w"
+    toggle_count = "toggle_count"
+    vendor_gap = "vendor_gap"
+    my_avg_price = "my_avg_price"
+    comp_avg_price = "comp_avg_price"
+    margin_opportunity_pct = "margin_opportunity_pct"
 
 
 class ArithmeticOp(str, Enum):
@@ -120,6 +130,10 @@ class WindowFunc(str, Enum):
     min = "MIN"
     max = "MAX"
     count = "COUNT"
+    stddev = "STDDEV"
+    stddev_pop = "STDDEV_POP"
+    variance = "VARIANCE"
+    var_pop = "VAR_POP"
 
 
 class JoinType(str, Enum):
