@@ -1,12 +1,24 @@
 """
-Pricing analyst query examples.
+Pricing analyst query examples - Real business use cases with technical patterns.
 
-Real-world queries for e-commerce pricing analysis, including:
-- Discount calculations
-- Competitor comparisons
-- Price rankings
-- Trend analysis
-- Price segmentation
+This module demonstrates real-world pricing analysis patterns used by e-commerce
+pricing analysts, complete with business context and technical implementation details.
+
+Each query shows:
+1. Business Context - When/why/who uses this query
+2. Natural Language - The analyst's original request
+3. Pydantic Model - The structured query implementation
+4. Generated SQL - The resulting query
+5. Technical Patterns - Window functions, JOINs, subqueries, CASE expressions
+
+Query Categories:
+- Discount calculations and markdown analysis
+- Competitor price comparisons (self-join patterns)
+- Price rankings and competitive positioning (window functions)
+- Trend analysis and price change detection (LAG/RANK)
+- Price segmentation and tier classification (CASE expressions)
+
+These are REAL queries that pricing analysts run daily, not toy examples.
 """
 
 from structured_query_builder import *
@@ -17,12 +29,23 @@ def example_1_discount_percentage():
     """
     Calculate discount percentage for markdown products.
 
+    Business Context:
+    Post-promotional period analysis - measure which markdowns are deepest.
+    Used by Pricing Analysts in weekly/monthly post-promotion reports.
+
+    Natural Language:
+    "Show me all products on markdown with discount percentage. I want to see
+    which ones have the deepest discounts to evaluate promotion effectiveness."
+
+    SQL Equivalent:
     SELECT title, regular_price, markdown_price,
            ((regular_price - markdown_price) / regular_price) AS discount_pct
     FROM product_offers
     WHERE is_markdown = TRUE
     ORDER BY discount_pct DESC
     LIMIT 20
+
+    Technical Pattern: CompoundArithmetic for nested calculations
     """
     print("\n" + "="*80)
     print("Pricing Example 1: Discount Percentage Analysis")
@@ -76,10 +99,21 @@ def example_2_price_ranking():
     """
     Rank products by price within each category.
 
+    Business Context:
+    Monthly strategy sessions - understand market position in each category.
+    Used by Director of Pricing presenting to executives.
+
+    Natural Language:
+    "For each category, rank all products by price from lowest to highest.
+    Where do we stand - cheapest, most expensive, or middle of the pack?"
+
+    SQL Equivalent:
     SELECT vendor, category, title, regular_price,
            RANK() OVER (PARTITION BY category
                         ORDER BY regular_price ASC) AS price_rank
     FROM product_offers
+
+    Technical Pattern: RANK() window function with PARTITION BY
     """
     print("\n" + "="*80)
     print("Pricing Example 2: Price Ranking by Category")
@@ -114,6 +148,15 @@ def example_3_competitor_comparison():
     """
     Compare our prices to Amazon's for the same products.
 
+    Business Context:
+    Daily competitive intelligence - direct price comparison on matched products.
+    Used by Competitive Intelligence Analysts for rapid response pricing.
+
+    Natural Language:
+    "Show me side-by-side price comparison for products we both carry.
+    Calculate the price difference so I can see where we're over/underpriced."
+
+    SQL Equivalent:
     SELECT ours.title,
            ours.regular_price AS our_price,
            theirs.regular_price AS amazon_price,
@@ -122,6 +165,8 @@ def example_3_competitor_comparison():
     INNER JOIN product_offers theirs
         ON ours.product_match_id = theirs.product_match_id
     WHERE ours.vendor = 'our_company' AND theirs.vendor = 'amazon'
+
+    Technical Pattern: Self-join with table aliases for comparison
     """
     print("\n" + "="*80)
     print("Pricing Example 3: Competitor Price Comparison (Self-Join)")
@@ -173,6 +218,15 @@ def example_4_above_category_average():
     """
     Find products priced above their category average.
 
+    Business Context:
+    Premium product identification - find items positioned above category norm.
+    Used by Category Managers for assortment and merchandising decisions.
+
+    Natural Language:
+    "Show me products priced above the average for their category.
+    These are our premium-positioned items that deserve special attention."
+
+    SQL Equivalent:
     SELECT title, category, regular_price
     FROM product_offers
     WHERE regular_price > (
@@ -180,6 +234,8 @@ def example_4_above_category_average():
         FROM product_offers sub
         WHERE sub.category = product_offers.category
     )
+
+    Technical Pattern: Correlated subquery for category-level comparison
     """
     print("\n" + "="*80)
     print("Pricing Example 4: Products Above Category Average")
@@ -222,6 +278,16 @@ def example_5_price_tier_classification():
     """
     Classify products into price tiers.
 
+    Business Context:
+    Product categorization for merchandising - segment by price point.
+    Used by Merchandising team for promotions, messaging, and assortment planning.
+
+    Natural Language:
+    "Classify products into tiers: budget (<$20), value ($20-$50),
+    standard ($50-$100), premium (>$100). This helps us target promotions
+    and understand our price point distribution."
+
+    SQL Equivalent:
     SELECT title, regular_price,
            CASE
                WHEN regular_price < 20 THEN 'budget'
@@ -230,6 +296,8 @@ def example_5_price_tier_classification():
                ELSE 'premium'
            END AS price_tier
     FROM product_offers
+
+    Technical Pattern: CASE expression for conditional bucketing
     """
     print("\n" + "="*80)
     print("Pricing Example 5: Price Tier Classification")
@@ -277,6 +345,16 @@ def example_6_vendor_price_stats():
     """
     Aggregate pricing statistics by vendor.
 
+    Business Context:
+    Quarterly vendor performance reviews - understand pricing strategies.
+    Used by Category Buyers in vendor negotiations and assortment decisions.
+
+    Natural Language:
+    "For each vendor, show me min, max, and average price along with product count.
+    This tells me if they're a discount vendor (low avg) or varied-assortment
+    vendor (high range). Filter to vendors with significant volume."
+
+    SQL Equivalent:
     SELECT vendor,
            COUNT(*) AS product_count,
            AVG(regular_price) AS avg_price,
@@ -286,6 +364,8 @@ def example_6_vendor_price_stats():
     GROUP BY vendor
     HAVING COUNT(*) > 100
     ORDER BY avg_price DESC
+
+    Technical Pattern: Multiple aggregates with GROUP BY and HAVING
     """
     print("\n" + "="*80)
     print("Pricing Example 6: Vendor Price Statistics")
@@ -345,12 +425,25 @@ def example_7_week_over_week_changes():
     """
     Track week-over-week price changes.
 
+    Business Context:
+    Monday mornings - detect competitor price movements to respond quickly.
+    Used by Competitive Intelligence Analysts for rapid reaction pricing.
+
+    Natural Language:
+    "Show me products where price changed from last week to this week.
+    I need current price and previous price side-by-side so I can calculate
+    the change and decide if we need to respond."
+
+    SQL Equivalent:
     SELECT vendor, title, regular_price, created_at,
            LAG(regular_price, 1, 0) OVER (
                PARTITION BY vendor, title
                ORDER BY created_at ASC
            ) AS prev_price
     FROM product_offers
+
+    Technical Pattern: LAG() window function for temporal comparison
+    Note: Application layer computes (current_price - prev_price) for change amount
     """
     print("\n" + "="*80)
     print("Pricing Example 7: Week-over-Week Price Changes")
