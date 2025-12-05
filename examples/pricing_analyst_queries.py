@@ -200,9 +200,18 @@ def example_3_competitor_comparison():
                     join_type=JoinType.inner,
                     table=Table.product_offers,
                     table_alias="theirs",
-                    left_column=Column.product_match_id,
-                    left_table_alias="ours",
-                    right_column=Column.product_match_id
+                    on_conditions=[
+                        ConditionGroup(
+                            conditions=[
+                                ColumnComparison(
+                                    left_column=QualifiedColumn(column=Column.product_match_id, table_alias="ours"),
+                                    operator=ComparisonOp.eq,
+                                    right_column=QualifiedColumn(column=Column.product_match_id, table_alias="theirs")
+                                )
+                            ],
+                            logic=LogicOp.and_
+                        )
+                    ]
                 )
             ]
         )
