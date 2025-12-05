@@ -1,605 +1,533 @@
 # =============================================================================
 # COMPLETE QUERY MAPPING: Intelligence Models → Code Implementation
 # =============================================================================
-# This file maps every query from the intelligence models to its actual
-# code implementation, providing traceability and documentation.
-#
-# Structure:
-#   - Model query name and logic (source of truth)
-#   - Code function name and location
-#   - Technical implementation patterns used
+# This file is AUTO-GENERATED from the query registry.
+# DO NOT EDIT MANUALLY - edit decorators in pricing_intelligence_queries.py
 # =============================================================================
 
-pricing_analyst_intelligence_model_mapping:
+# ARCHETYPE: ENFORCER
+# -----------------------------------------------------------------------------
 
-  # ARCHETYPE 1: THE ENFORCER (Compliance & Positioning)
-  archetype_1_the_enforcer:
+concern: Brand Alignment
+universal_reasoning: |
+  Does our assortment price us out of the 'Middle Class' demographic?
 
-    concern_A_parity_maintenance:
-      universal_reasoning: "Are we drifting too far above the market price, causing us to lose relevance?"
-
-      matched_execution:
-        query_name: "The Index Drift Check"
-        model_logic: "Select matches where (My_Price / Competitor_Price) > 1.05."
-        model_outcome: "Precise List: 'SKU #123 is 7% too expensive.'"
-        code_implementation: query_30_index_drift_check
-        code_location: examples/pricing_intelligence_queries.py:1544
-        code_pattern: |
-          - ArithmeticCondition for ratio comparison (my_price > comp_price * 1.05)
-          - Inner joins through exact_matches table
-          - ComputedExpr for price_ratio calculation
-          - My/comp table aliases pattern
-
-      unmatched_approximation:
-        query_name: "The Average Selling Price (ASP) Gap"
-        model_logic: "Compare Avg(My_Price) vs Avg(Competitor_Price) Group By Brand + Category."
-        model_outcome: "Directional Signal: 'We are generally $50 more expensive on Samsung TVs than they are.'"
-        code_implementation: query_31_average_selling_price_gap
-        code_location: examples/pricing_intelligence_queries.py:1601
-        code_pattern: |
-          - Simple aggregate pattern with GROUP BY
-          - No joins required (unmatched)
-          - Returns vendor, brand, category, avg_price, count
-          - Post-processing needed to compare Us vs Them
-
-    concern_B_map_policing:
-      universal_reasoning: "Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?"
-
-      matched_execution:
-        query_name: "The SKU Violation Scan"
-        model_logic: "Select matches where Competitor_Price < MAP_List_Value (joined by SKU)."
-        model_outcome: "Evidence Packet: 'They are breaking MAP on exactly these 5 items.'"
-        code_implementation: query_32_sku_violation_scan
-        code_location: examples/pricing_intelligence_queries.py:1606
-        code_pattern: |
-          - ColumnComparison: comp.markdown_price < my.regular_price
-          - Uses regular_price as MAP proxy
-          - ComputedExpr for map_violation_amount
-          - Inner joins through exact_matches
-
-      unmatched_approximation:
-        query_name: "The Brand Floor Scan"
-        model_logic: "Select * from Competitor_Offers where Brand = 'Dyson' AND Price < Global_Dyson_MAP_Floor."
-        model_outcome: "Dragnet: 'They have 3 unidentified Dyson items selling below the legal limit.'"
-        code_implementation: query_16_map_violations_unmatched
-        code_location: examples/pricing_intelligence_queries.py:24
-        code_pattern: |
-          - Simple WHERE filters: vendor=Them, brand=Nike, price<50
-          - No joins (unmatched)
-          - Hardcoded MAP threshold (would be parameterized in production)
-
-    concern_C_brand_alignment:
-      universal_reasoning: "Does our assortment price us out of the 'Middle Class' demographic?"
-
-      matched_execution:
-        query_name: "The Premium Gap Analysis"
-        model_logic: "Avg(My_Price - Competitor_Price) on Matched Items Only."
-        model_outcome: "apples-to-apples comparison of premium markup."
-        code_implementation: query_17_premium_gap_analysis
-        code_location: examples/pricing_intelligence_queries.py:89
-        code_pattern: |
-          - AggregateExpr with BinaryArithmetic input
-          - AVG of (my_price - comp_price) in single expression
-          - JoinSpec with DerivedTable pattern
-          - Groups by brand + category
-
-      unmatched_approximation:
-        query_name: "The Category Histogram"
-        model_logic: "Plot Count(Offers) by Price Bin ($0-50, $51-100). Compare shapes."
-        model_outcome: "Distribution Insight: 'They have a huge cluster of items at $20. We have nothing under $50. We are missing the entry-level shopper.'"
-        code_implementation: query_03_category_histogram
-        code_location: examples/pricing_intelligence_queries.py:197
-        code_pattern: |
-          - CaseExpr to bucket prices into tiers
-          - Multiple WhenClause conditions for price ranges
-          - GROUP BY case alias
-          - Count per bucket
-
-  # ARCHETYPE 2: THE PREDATOR (Margin & Opportunity)
-  archetype_2_the_predator:
-
-    concern_A_monopoly_exploitation:
-      universal_reasoning: "If they are out of stock, supply is low. I should raise prices to maximize profit."
-
-      matched_execution:
-        query_name: "The Stockout Gouge"
-        model_logic: "Select matches where My_Stock=TRUE and Their_Stock=FALSE."
-        model_outcome: "Targeted Strike: 'Raise price to MSRP on these 12 specific items immediately.'"
-        code_implementation: query_11_stockout_gouge
-        code_location: examples/pricing_intelligence_queries.py:457
-        code_pattern: |
-          - Boolean filters on availability column
-          - my.availability = TRUE AND comp.availability = FALSE
-          - Inner joins through exact_matches
-          - Direct competitive advantage detection
-
-      unmatched_approximation:
-        query_name: "The Supply Chain Failure Detector"
-        model_logic: "Count(Competitor_In_Stock_Offers) Group By Brand. Check for sudden drops."
-        model_outcome: "Broad Policy: 'Their Sony inventory dropped 40%. Turn off all Sony auto-discounts until further notice.'"
-        code_implementation: query_18_supply_chain_failure_detector
-        code_location: examples/pricing_intelligence_queries.py:279
-        code_pattern: |
-          - DerivedTable with LAG window function
-          - Tracks offer_count changes week-over-week
-          - WindowExpr: LAG(offer_count) PARTITION BY brand, vendor
-          - Outer query filters for significant drops
-
-    concern_B_headroom_discovery:
-      universal_reasoning: "Are we pricing lower than the market floor unnecessarily?"
-
-      matched_execution:
-        query_name: "The Unnecessary Discount Finder"
-        model_logic: "Select where My_Price < Competitor_Price AND My_Price < My_Regular."
-        model_outcome: "Correction: 'Raise these 40 items by $5 to match them.'"
-        code_implementation: query_33_unnecessary_discount_finder
-        code_location: examples/pricing_intelligence_queries.py:1496
-        code_pattern: |
-          - Double ColumnComparison filters
-          - my.markdown_price < comp.markdown_price
-          - my.markdown_price < my.regular_price
-          - ComputedExpr for price_headroom opportunity
-
-      unmatched_approximation:
-        query_name: "The Cluster Floor Check"
-        model_logic: "Identify the 10th Percentile Price of the Competitor's Category. Check if My_Price < 10th_Percentile."
-        model_outcome: "Outlier Check: 'Why are we selling a toaster for $12 when their cheapest toaster is $19? Investigate.'"
-        code_implementation: query_06_cluster_floor_check
-        code_location: examples/pricing_intelligence_queries.py:664
-        code_pattern: |
-          - PERCENTILE_DISC(0.10) aggregate function
-          - Groups by category
-          - Identifies entry-level price threshold
-          - No joins (unmatched analysis)
-
-    concern_C_bottom_feeding:
-      universal_reasoning: "Identify 'garbage' low prices that we should ignore to save margin."
-
-      matched_execution:
-        query_name: "The Loss-Leader Hunter"
-        model_logic: "Flag matches where Competitor_Price < My_Cost_Proxy."
-        model_outcome: "Exclusion List: 'Do not match SKU #999; they are dumping it.'"
-        code_implementation: query_19_loss_leader_hunter
-        code_location: examples/pricing_intelligence_queries.py:363
-        code_pattern: |
-          - ColumnComparison: comp.markdown_price < my.regular_price
-          - Uses regular_price as cost proxy
-          - Identifies unprofitable competitive matches
-
-      unmatched_approximation:
-        query_name: "The Deep Discount Filter"
-        model_logic: "Flag offers where (Price_Regular - Price_Current) / Price_Regular > 50%."
-        model_outcome: "Noise Reduction: 'Ignore any market signal from items discounted >50%; it's clearance noise.'"
-        code_implementation: query_12_deep_discount_filter
-        code_location: examples/pricing_intelligence_queries.py:560
-        code_pattern: |
-          - DerivedTable to calculate discount_percent
-          - Inner query: (regular - markdown) / regular AS discount_percent
-          - Outer WHERE: discount_percent > 0.50
-          - Filters clearance items from analysis
-
-  # ARCHETYPE 3: THE HISTORIAN (Strategy Inference)
-  archetype_3_the_historian:
-
-    concern_A_promo_detection:
-      universal_reasoning: "Did they just launch a campaign, or is this random noise?"
-
-      matched_execution:
-        query_name: "The Slash-and-Burn Alert"
-        model_logic: "Count matches where price dropped >15% overnight."
-        model_outcome: "Specific Intel: 'They discounted the Ninja 3000 and the KitchenAid K5.'"
-        code_implementation: query_08_slash_and_burn_alert
-        code_location: examples/pricing_intelligence_queries.py:1025
-        code_pattern: |
-          - DerivedTable with LAG window function
-          - WindowExpr: LAG(markdown_price) PARTITION BY id
-          - Outer filter: percentage drop > 15%
-          - Detects sudden price drops
-
-      unmatched_approximation:
-        query_name: "The Category Erosion Index"
-        model_logic: "Calculate Avg(Price) of entire Category. Did it drop > 5%?"
-        model_outcome: "Event Detection: 'The entire Kitchen category moved down. Launch Counter-Promo #4.'"
-        code_implementation: query_21_promo_erosion_index
-        code_location: examples/pricing_intelligence_queries.py:870
-        code_pattern: |
-          - DerivedTable with category-level LAG
-          - AVG price by category over time
-          - WindowExpr: LAG(avg_price) PARTITION BY category
-          - Tracks category-wide price movements
-
-    concern_B_inflation_tracking:
-      universal_reasoning: "Has the market accepted a price increase? Can we move the floor up?"
-
-      matched_execution:
-        query_name: "The Item Inflation Tracker"
-        model_logic: "Avg price increase on same-SKU over 6 months."
-        model_outcome: "Validation: 'They raised the price on the runner SKU. We follow.'"
-        code_implementation: query_20_category_price_snapshot
-        code_location: examples/pricing_intelligence_queries.py:763
-        code_pattern: |
-          - Self-join on product_offers with temporal filter
-          - Compares current vs historical prices
-          - DerivedTable for multi-step aggregation
-          - Time-series price comparison
-
-      unmatched_approximation:
-        query_name: "The Minimum Viable Price Lift"
-        model_logic: "Track Min(Price) of the category over time."
-        model_outcome: "Trend: 'The cheapest item in the market is now $25 (was $20). Update our Entry Price rules.'"
-        code_implementation: query_09_minimum_viable_price_lift
-        code_location: examples/pricing_intelligence_queries.py:1123
-        code_pattern: |
-          - MIN aggregate by category
-          - Tracks floor price evolution
-          - Simple unmatched analysis
-
-    concern_C_churn_analysis:
-      universal_reasoning: "Are they exiting a brand or category? If they are delisting products, we can step in to fill the void."
-
-      matched_execution:
-        query_name: "The Assortment Rotation Check"
-        model_logic: "Select IDs present in T_LastWeek but missing in T_Current (Competitor Only)."
-        model_outcome: "Specific Intel: 'They stopped selling the Dyson V10 and V11. They might be losing the vendor relationship.'"
-        code_implementation: query_10_assortment_rotation_check
-        code_location: examples/pricing_intelligence_queries.py:1174
-        code_pattern: |
-          - Temporal self-join pattern
-          - LEFT JOIN to find missing items
-          - WHERE right_side IS NULL (anti-join pattern)
-          - Detects delisted products
-
-      unmatched_approximation:
-        query_name: "The Brand Volume Drop"
-        model_logic: "Compare Count(Offers) per Brand for T_Current vs T_LastWeek."
-        model_outcome: "Signal: 'Their total count of Dyson offers dropped by 40%. They are likely liquidating the brand.'"
-        code_implementation: query_22_brand_presence_tracking
-        code_location: examples/pricing_intelligence_queries.py:936
-        code_pattern: |
-          - WindowExpr: LAG(offer_count) PARTITION BY brand, vendor
-          - DerivedTable with COUNT aggregation
-          - Tracks brand volume changes
-          - count_change_pct computed column
-
-  # ARCHETYPE 4: THE MERCENARY (Optics & Psychology)
-  archetype_4_the_mercenary:
-
-    concern_A_optical_dominance:
-      universal_reasoning: "Who looks like they have the better deal (bigger discount)?"
-
-      matched_execution:
-        query_name: "The Anchor Check"
-        model_logic: "Select matches where My_Regular < Their_Regular."
-        model_outcome: "Adjustment: 'Boost our Regular Price on SKU X so our discount % looks as good as theirs.'"
-        code_implementation: query_34_anchor_check
-        code_location: examples/pricing_intelligence_queries.py:1568
-        code_pattern: |
-          - ColumnComparison: my.regular_price < comp.regular_price
-          - ComputedExpr for anchor_gap
-          - Identifies optical discount disadvantages
-          - Psychology-based pricing adjustment
-
-      unmatched_approximation:
-        query_name: "The Discount Depth Distribution"
-        model_logic: "Avg(Discount %) for the Category. Us vs. Them."
-        model_outcome: "Perception Audit: 'Their average discount is 20%. Ours is 10%. We look stingy. Increase broad markdown depth.'"
-        code_implementation: query_23_discount_depth_distribution
-        code_location: examples/pricing_intelligence_queries.py:1359
-        code_pattern: |
-          - Aggregate discount analysis by category
-          - AVG, STDDEV for discount patterns
-          - is_markdown flag grouping
-          - Statistical distribution analysis
-
-    concern_B_keyword_arbitrage:
-      universal_reasoning: "What is the 'Street Price' for a specific customer search term?"
-
-      matched_execution:
-        query_name: "N/A (Matches make this redundant)"
-        model_logic: "Matches rely on IDs, not words."
-        model_outcome: "N/A"
-        code_implementation: null
-        code_location: null
-        code_pattern: null
-
-      unmatched_approximation:
-        query_name: "The Ad-Hoc Keyword Scrape"
-        model_logic: "Select Avg(Price) where Title LIKE '%1TB SSD%'."
-        model_outcome: "Proxy Match: 'The market says a 1TB SSD is worth $95. Ensure we have *something* at that price.'"
-        code_implementation: query_35_ad_hoc_keyword_scrape
-        code_location: examples/pricing_intelligence_queries.py:1496
-        code_pattern: |
-          - ILIKE pattern matching on title
-          - Single keyword filter (parameterizable)
-          - AVG/MIN/MAX/COUNT aggregates
-          - No joins, pure text search
-
-
-commercial_architect_intelligence_model_mapping:
-
-  # DOMAIN 1: RANGE ARCHITECTURE
-  concern_A_assortment_overlap_and_exclusivity:
-    universal_reasoning: |
-      "I need to know exactly how unique my business is.
-      If I am selling the same things as them, I am a commodity.
-      If I am selling different things, I am a destination."
-
-    matched_execution:
-      query_name: "The Commoditization Coefficient"
+  matched_execution:
+    - query_number: Q17
+      query_name: "The Premium Gap Analysis"
+      function_name: query_17_premium_gap_analysis
       model_logic: |
-        1. Select Count(Matches) / Count(Total_My_Assortment).
-        2. Select Count(Matches) / Count(Total_Competitor_Assortment).
-      model_insight: |
-        "I share 80% of my range with them, but they only share 10% of their range with me.
-        I am a subset of their business. I have no defensive moat."
-      code_implementation: query_24_commoditization_coefficient
-      code_location: examples/pricing_intelligence_queries.py:21
+        Avg(My_Price - Competitor_Price) on Matched Items Only.
+      model_outcome: |
+        apples-to-apples comparison of premium markup.
       code_pattern: |
-        - DerivedTable with exact_matches analysis
-        - Calculates match_count and total_count
-        - Computes overlap percentages
-        - Reveals competitive differentiation
+        - AggregateExpr with BinaryArithmetic input
+        - AVG of (my_price - comp_price) in single expression
+        - JoinSpec with DerivedTable pattern
+        - Groups by brand + category
 
-    unmatched_execution:
-      query_name: "The Brand Weighting Fingerprint"
+  unmatched_approximation:
+    - query_number: Q03
+      query_name: "The Category Histogram"
+      function_name: query_03_category_histogram
       model_logic: |
-        1. Calculate Share_of_Shelf % per Brand for Me vs. Them.
-        2. (e.g., Me: 40% Sony, Them: 10% Sony).
-      model_insight: |
-        "Even without SKU matches, I can see they are betting on LG while I am betting on Sony.
-        I need to negotiate better terms with Sony because I am their main channel."
-      code_implementation: query_25_brand_weighting_fingerprint
-      code_location: examples/pricing_intelligence_queries.py:125
+        Plot Count(Offers) by Price Bin ($0-50, $51-100). Compare shapes.
+      model_outcome: |
+        Distribution Insight: 'They have a huge cluster of items at $20. We have nothing under $50. We are missing the entry-level shopper.'
       code_pattern: |
-        - Window function: COUNT OVER (PARTITION BY vendor)
-        - Calculates brand_share_pct per vendor
-        - No joins required
-        - Reveals brand positioning strategy
+        - CaseExpr to bucket prices into tiers
+        - Multiple WhenClause conditions for price ranges
+        - GROUP BY case alias
+        - Count per bucket
 
-  concern_B_gap_analysis_and_white_space:
-    universal_reasoning: |
-      "Where are they failing to serve the customer?
-      I will find the empty space in their catalog and fill it."
 
-    matched_execution:
+concern: MAP Policing
+universal_reasoning: |
+  Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?
+
+  matched_execution:
+    - query_number: Q32
+      query_name: "The SKU Violation Scan"
+      function_name: query_32_sku_violation_scan
+      model_logic: |
+        Select matches where Competitor_Price < MAP_List_Value (joined by SKU).
+      model_outcome: |
+        Evidence Packet: 'They are breaking MAP on exactly these 5 items.'
+      code_pattern: |
+        - ColumnComparison: comp.markdown_price < my.regular_price
+        - Uses regular_price as MAP proxy
+        - ComputedExpr for map_violation_amount
+        - Inner joins through exact_matches
+
+  unmatched_approximation:
+    - query_number: Q16
+      query_name: "The Brand Floor Scan"
+      function_name: query_16_map_violations_unmatched
+      model_logic: |
+        Select * from Competitor_Offers where Brand = 'Dyson' AND Price < Global_Dyson_MAP_Floor.
+      model_outcome: |
+        Dragnet: 'They have 3 unidentified Dyson items selling below the legal limit.'
+      code_pattern: |
+        - Simple WHERE filters: vendor=Them, brand=Nike, price<50
+        - No joins (unmatched)
+        - Hardcoded MAP threshold (would be parameterized in production)
+
+
+concern: Parity Maintenance
+universal_reasoning: |
+  Are we drifting too far above the market price, causing us to lose relevance?
+
+  matched_execution:
+    - query_number: Q30
+      query_name: "The Index Drift Check"
+      function_name: query_30_index_drift_check
+      model_logic: |
+        Select matches where (My_Price / Competitor_Price) > 1.05.
+      model_outcome: |
+        Precise List: 'SKU #123 is 7% too expensive.'
+      code_pattern: |
+        - ArithmeticCondition for ratio comparison (my_price > comp_price * 1.05)
+        - Inner joins through exact_matches table
+        - ComputedExpr for price_ratio calculation
+        - My/comp table aliases pattern
+
+  unmatched_approximation:
+    - query_number: Q31
+      query_name: "The Average Selling Price (ASP) Gap"
+      function_name: query_31_average_selling_price_gap
+      model_logic: |
+        Compare Avg(My_Price) vs Avg(Competitor_Price) Group By Brand + Category.
+      model_outcome: |
+        Directional Signal: 'We are generally $50 more expensive on Samsung TVs than they are.'
+      code_pattern: |
+        - Simple aggregate pattern with GROUP BY
+        - No joins required (unmatched)
+        - Returns vendor, brand, category, avg_price, count
+        - Post-processing needed to compare Us vs Them
+
+
+# ARCHETYPE: PREDATOR
+# -----------------------------------------------------------------------------
+
+concern: Headroom Discovery
+universal_reasoning: |
+  Are we pricing lower than the market floor unnecessarily?
+
+  matched_execution:
+    - query_number: Q33
+      query_name: "The Unnecessary Discount Finder"
+      function_name: query_33_unnecessary_discount_finder
+      model_logic: |
+        Select where My_Price < Competitor_Price AND My_Price < My_Regular.
+      model_outcome: |
+        Correction: 'Raise these 40 items by $5 to match them.'
+      code_pattern: |
+        - Double ColumnComparison filters
+        - my.markdown_price < comp.markdown_price
+        - my.markdown_price < my.regular_price
+        - ComputedExpr for price_headroom opportunity
+
+  unmatched_approximation:
+    - query_number: Q06
+      query_name: "The Cluster Floor Check"
+      function_name: query_06_cluster_floor_check
+      model_logic: |
+        Identify the 10th Percentile Price of the Competitor's Category. Check if My_Price < 10th_Percentile.
+      model_outcome: |
+        Outlier Check: 'Why are we selling a toaster for $12 when their cheapest toaster is $19? Investigate.'
+      code_pattern: |
+        - PERCENTILE_DISC(0.10) aggregate function
+        - Groups by category
+        - Identifies entry-level price threshold
+        - No joins (unmatched analysis)
+
+
+concern: Monopoly Exploitation
+universal_reasoning: |
+  If they are out of stock, supply is low. I should raise prices to maximize profit.
+
+  matched_execution:
+    - query_number: Q11
+      query_name: "The Stockout Gouge"
+      function_name: query_11_stockout_gouge
+      model_logic: |
+        Select matches where My_Stock=TRUE and Their_Stock=FALSE.
+      model_outcome: |
+        Targeted Strike: 'Raise price to MSRP on these 12 specific items immediately.'
+      code_pattern: |
+        - Boolean filters on availability column
+        - my.availability = TRUE AND comp.availability = FALSE
+        - Inner joins through exact_matches
+        - Direct competitive advantage detection
+
+  unmatched_approximation:
+    - query_number: Q18
+      query_name: "The Supply Chain Failure Detector"
+      function_name: query_18_supply_chain_failure_detector
+      model_logic: |
+        Count(Competitor_In_Stock_Offers) Group By Brand. Check for sudden drops.
+      model_outcome: |
+        Broad Policy: 'Their Sony inventory dropped 40%. Turn off all Sony auto-discounts until further notice.'
+      code_pattern: |
+        - DerivedTable with LAG window function
+        - Tracks offer_count changes week-over-week
+        - WindowExpr: LAG(offer_count) PARTITION BY brand, vendor
+        - Outer query filters for significant drops
+
+
+concern: Bottom Feeding
+universal_reasoning: |
+  Identify 'garbage' low prices that we should ignore to save margin.
+
+  matched_execution:
+    - query_number: Q19
+      query_name: "The Loss-Leader Hunter"
+      function_name: query_19_loss_leader_hunter
+      model_logic: |
+        Flag matches where Competitor_Price < My_Cost_Proxy.
+      model_outcome: |
+        Exclusion List: 'Do not match SKU #999; they are dumping it.'
+      code_pattern: |
+        - ColumnComparison: comp.markdown_price < my.regular_price
+        - Uses regular_price as cost proxy
+        - Identifies unprofitable competitive matches
+
+  unmatched_approximation:
+    - query_number: Q12
+      query_name: "The Deep Discount Filter"
+      function_name: query_12_deep_discount_filter
+      model_logic: |
+        Flag offers where (Price_Regular - Price_Current) / Price_Regular > 50%.
+      model_outcome: |
+        Noise Reduction: 'Ignore any market signal from items discounted >50%; it's clearance noise.'
+      code_pattern: |
+        - DerivedTable to calculate discount_percent
+        - Inner query: (regular - markdown) / regular AS discount_percent
+        - Outer WHERE: discount_percent > 0.50
+        - Filters clearance items from analysis
+
+
+# ARCHETYPE: HISTORIAN
+# -----------------------------------------------------------------------------
+
+concern: Promo Detection
+universal_reasoning: |
+  Did they just launch a campaign, or is this random noise?
+
+  matched_execution:
+    - query_number: Q08
+      query_name: "The Slash-and-Burn Alert"
+      function_name: query_08_slash_and_burn_alert
+      model_logic: |
+        Count matches where price dropped >15% overnight.
+      model_outcome: |
+        Specific Intel: 'They discounted the Ninja 3000 and the KitchenAid K5.'
+      code_pattern: |
+        - DerivedTable with LAG window function
+        - WindowExpr: LAG(markdown_price) PARTITION BY id
+        - Outer filter: percentage drop > 15%
+        - Detects sudden price drops
+
+  unmatched_approximation:
+    - query_number: Q21
+      query_name: "The Category Erosion Index"
+      function_name: query_21_promo_erosion_index
+      model_logic: |
+        Calculate Avg(Price) of entire Category. Did it drop > 5%?
+      model_outcome: |
+        Event Detection: 'The entire Kitchen category moved down. Launch Counter-Promo #4.'
+      code_pattern: |
+        - DerivedTable with category-level LAG
+        - AVG price by category over time
+        - WindowExpr: LAG(avg_price) PARTITION BY category
+        - Tracks category-wide price movements
+
+
+concern: Inflation Tracking
+universal_reasoning: |
+  Has the market accepted a price increase? Can we move the floor up?
+
+  matched_execution:
+    - query_number: Q20
+      query_name: "The Item Inflation Tracker"
+      function_name: query_20_category_price_snapshot
+      model_logic: |
+        Avg price increase on same-SKU over 6 months.
+      model_outcome: |
+        Validation: 'They raised the price on the runner SKU. We follow.'
+      code_pattern: |
+        - Self-join on product_offers with temporal filter
+        - Compares current vs historical prices
+        - DerivedTable for multi-step aggregation
+        - Time-series price comparison
+
+  unmatched_approximation:
+    - query_number: Q09
+      query_name: "The Minimum Viable Price Lift"
+      function_name: query_09_minimum_viable_price_lift
+      model_logic: |
+        Track Min(Price) of the category over time.
+      model_outcome: |
+        Trend: 'The cheapest item in the market is now $25 (was $20). Update our Entry Price rules.'
+      code_pattern: |
+        - MIN aggregate by category
+        - Tracks floor price evolution
+        - Simple unmatched analysis
+
+
+concern: Churn Analysis
+universal_reasoning: |
+  Are they exiting a brand or category? If they are delisting products, we can step in to fill the void.
+
+  matched_execution:
+    - query_number: Q10
+      query_name: "The Assortment Rotation Check"
+      function_name: query_10_assortment_rotation_check
+      model_logic: |
+        Select IDs present in T_LastWeek but missing in T_Current (Competitor Only).
+      model_outcome: |
+        Specific Intel: 'They stopped selling the Dyson V10 and V11. They might be losing the vendor relationship.'
+      code_pattern: |
+        - Temporal self-join pattern
+        - LEFT JOIN to find missing items
+        - WHERE right_side IS NULL (anti-join pattern)
+        - Detects delisted products
+
+  unmatched_approximation:
+    - query_number: Q22
+      query_name: "The Brand Volume Drop"
+      function_name: query_22_brand_presence_tracking
+      model_logic: |
+        Compare Count(Offers) per Brand for T_Current vs T_LastWeek.
+      model_outcome: |
+        Signal: 'Their total count of Dyson offers dropped by 40%. They are likely liquidating the brand.'
+      code_pattern: |
+        - WindowExpr: LAG(offer_count) PARTITION BY brand, vendor
+        - DerivedTable with COUNT aggregation
+        - Tracks brand volume changes
+        - count_change_pct computed column
+
+
+# ARCHETYPE: MERCENARY
+# -----------------------------------------------------------------------------
+
+concern: Optical Dominance
+universal_reasoning: |
+  Who looks like they have the better deal (bigger discount)?
+
+  matched_execution:
+    - query_number: Q34
+      query_name: "The Anchor Check"
+      function_name: query_34_anchor_check
+      model_logic: |
+        Select matches where My_Regular < Their_Regular.
+      model_outcome: |
+        Adjustment: 'Boost our Regular Price on SKU X so our discount % looks as good as theirs.'
+      code_pattern: |
+        - ColumnComparison: my.regular_price < comp.regular_price
+        - ComputedExpr for anchor_gap
+        - Identifies optical discount disadvantages
+        - Psychology-based pricing adjustment
+
+  unmatched_approximation:
+    - query_number: Q23
+      query_name: "The Discount Depth Distribution"
+      function_name: query_23_discount_depth_distribution
+      model_logic: |
+        Avg(Discount %) for the Category. Us vs. Them.
+      model_outcome: |
+        Perception Audit: 'Their average discount is 20%. Ours is 10%. We look stingy. Increase broad markdown depth.'
+      code_pattern: |
+        - Aggregate discount analysis by category
+        - AVG, STDDEV for discount patterns
+        - is_markdown flag grouping
+        - Statistical distribution analysis
+
+
+concern: Keyword Arbitrage
+universal_reasoning: |
+  What is the 'Street Price' for a specific customer search term?
+
+  unmatched_approximation:
+    - query_number: Q35
+      query_name: "The Ad-Hoc Keyword Scrape"
+      function_name: query_35_ad_hoc_keyword_scrape
+      model_logic: |
+        Select Avg(Price) where Title LIKE '%1TB SSD%'.
+      model_outcome: |
+        Proxy Match: 'The market says a 1TB SSD is worth $95. Ensure we have *something* at that price.'
+      code_pattern: |
+        - ILIKE pattern matching on title
+        - Single keyword filter (parameterizable)
+        - AVG/MIN/MAX/COUNT aggregates
+        - No joins, pure text search
+
+
+# ARCHETYPE: ARCHITECT
+# -----------------------------------------------------------------------------
+
+concern: Gap Analysis and White Space
+universal_reasoning: |
+  Where are they failing to serve the customer? I will find the empty space in their catalog and fill it.
+
+  matched_execution:
+    - query_number: Q13
       query_name: "The Ghost Inventory Check"
+      function_name: query_13_ghost_inventory_check
       model_logic: |
         Select Matches where Competitor_Availability = FALSE for > 4 consecutive weeks.
-      model_insight: |
-        "They have permanently failed to stock these 50 items.
-        I will double my inventory position on these specific SKUs and market them aggressively."
-      code_implementation: query_13_ghost_inventory_check
-      code_location: examples/pricing_intelligence_queries.py:1261
+      model_outcome: |
+        They have permanently failed to stock these 50 items. I will double my inventory position on these specific SKUs and market them aggressively.
       code_pattern: |
         - Boolean filter: comp.availability = FALSE
         - Temporal analysis (would need time window in production)
         - Inner joins through exact_matches
         - Identifies persistent stockouts
 
-    unmatched_execution:
+  unmatched_approximation:
+    - query_number: Q26
       query_name: "The Price Ladder Void"
+      function_name: query_26_price_ladder_void_scanner
       model_logic: |
         1. Bin all Competitor offers into Price Buckets ($0-10, $10-20...).
         2. Identify buckets with Count(Offers) = 0.
-      model_insight: |
-        "They have zero Toasters between $50 and $80.
-        I will source a 'Good/Better' toaster at $69.99 to own that price point exclusively."
-      code_implementation: query_26_price_ladder_void_scanner
-      code_location: examples/pricing_intelligence_queries.py:200
+      model_outcome: |
+        They have zero Toasters between $50 and $80. I will source a 'Good/Better' toaster at $69.99 to own that price point exclusively.
       code_pattern: |
         - CaseExpr to bucket prices into tiers
         - COUNT(*) per bucket
         - GROUP BY price tier
         - Identifies pricing gaps
 
-  # DOMAIN 2: PROCUREMENT INTELLIGENCE
-  concern_A_cost_model_validation:
-    universal_reasoning: |
-      "I know my cost (Internal). I see their price (External).
-      If their price is near my cost, either they are losing money, or they buy it cheaper than I do."
 
-    matched_execution:
+concern: Cost Model Validation
+universal_reasoning: |
+  I know my cost (Internal). I see their price (External). If their price is near my cost, either they are losing money, or they buy it cheaper than I do.
+
+  matched_execution:
+    - query_number: Q27
       query_name: "The Vendor Fairness Audit"
+      function_name: query_27_vendor_fairness_audit
       model_logic: |
         Select Matches where Competitor_Regular_Price < (My_Net_Cost * 1.05).
-      model_insight: |
-        "They are selling at my cost plus 5%. Unless they run a charity, they are buying this 10% cheaper than me.
-        I will print this list and throw it on the vendor's desk to demand parity."
-      code_implementation: query_27_vendor_fairness_audit
-      code_location: examples/pricing_intelligence_queries.py:19
+      model_outcome: |
+        They are selling at my cost plus 5%. Unless they run a charity, they are buying this 10% cheaper than me. I will print this list and throw it on the vendor's desk to demand parity.
       code_pattern: |
         - ColumnComparison: comp.regular_price < my.regular_price
         - Uses regular_price as cost proxy
         - ComputedExpr for vendor_gap
         - Negotiation leverage detection
 
-    unmatched_execution:
+  unmatched_approximation:
+    - query_number: Q14
       query_name: "The Global Floor Stress Test"
+      function_name: query_14_global_floor_stress_test
       model_logic: |
-        1. Select Min(Current_Price) Group By Brand + Category.
-        2. Compare vs. My_Entry_Level_Cost.
-      model_insight: |
-        "The cheapest Samsung TV in the market is $300. My cheapest cost is $350.
-        I am sourcing the wrong models. I need to ask Samsung for their 'fighter' SKUs."
-      code_implementation: query_14_global_floor_stress_test
-      code_location: examples/pricing_intelligence_queries.py:1432
+        Select Min(Current_Price) Group By Brand + Category. Compare vs. My_Entry_Level_Cost.
+      model_outcome: |
+        The cheapest Samsung TV in the market is $300. My cheapest cost is $350. I am sourcing the wrong models. I need to ask Samsung for their 'fighter' SKUs.
       code_pattern: |
         - MIN(markdown_price) by brand + category
         - COUNT for competitor offer density
         - vendor != Us filter
         - Reveals market floor prices
 
-  concern_B_margin_potential_discovery:
-    universal_reasoning: |
-      "Where is the market 'sleepy'? Where are prices stable and high,
-      allowing me to take margin without fighting?"
 
-    matched_execution:
+concern: Margin Potential Discovery
+universal_reasoning: |
+  Where is the market 'sleepy'? Where are prices stable and high, allowing me to take margin without fighting?
+
+  matched_execution:
+    - query_number: Q28
       query_name: "The Safe Haven Scan"
+      function_name: query_28_safe_haven_scanner
       model_logic: |
-        Select Matches where StdDev(Competitor_Price_52Weeks) is Low
-        AND (Competitor_Price - My_Cost) > 40%.
-      model_insight: |
-        "These items are high-margin and stable. They never discount them.
-        I will lock these prices and treat them as my 'Profit Engine'."
-      code_implementation: query_28_safe_haven_scanner
-      code_location: examples/pricing_intelligence_queries.py:128
+        Select Matches where StdDev(Competitor_Price_52Weeks) is Low AND (Competitor_Price - My_Cost) > 40%.
+      model_outcome: |
+        These items are high-margin and stable. They never discount them. I will lock these prices and treat them as my 'Profit Engine'.
       code_pattern: |
         - WindowExpr: STDDEV(markdown_price) OVER temporal window
         - DerivedTable for volatility calculation
         - Filter for low volatility + high margin
         - alias: price_volatility_52w
 
-    unmatched_execution:
+  unmatched_approximation:
+    - query_number: Q15
       query_name: "The Category Margin Proxy"
+      function_name: query_15_category_margin_proxy
       model_logic: |
         Compare Avg(Price_Regular) vs Avg(Price_Current) for the whole Category.
-      model_insight: |
-        "The 'Cables' category has almost zero discounting activity (Avg Price = Regular Price).
-        This is a safe category to maximize my initial markup."
-      code_implementation: query_15_category_margin_proxy
-      code_location: examples/pricing_intelligence_queries.py:281
+      model_outcome: |
+        The 'Cables' category has almost zero discounting activity (Avg Price = Regular Price). This is a safe category to maximize my initial markup.
       code_pattern: |
         - DerivedTable with category-level aggregations
         - AVG(comp_avg_price) vs AVG(my_avg_price)
         - CompoundArithmetic for margin_opportunity_pct
         - Inner query groups by category
 
-  # DOMAIN 3: PRICING ARCHITECTURE
-  concern_A_psychological_anchoring:
-    universal_reasoning: |
-      "How does the customer perceive value?
-      I need to master the gap between the 'Sticker Price' and the 'Real Price'."
 
-    matched_execution:
-      query_name: "The Discount Depth Alignment"
+concern: Assortment Overlap and Exclusivity
+universal_reasoning: |
+  I need to know exactly how unique my business is. If I am selling the same things as them, I am a commodity. If I am selling different things, I am a destination.
+
+  matched_execution:
+    - query_number: Q24
+      query_name: "The Commoditization Coefficient"
+      function_name: query_24_commoditization_coefficient
       model_logic: |
-        Select Matches where (Competitor_Regular - Competitor_Current) > (My_Regular - My_Current).
-      model_insight: |
-        "We are both at $100. But they say 'Was $150', and I say 'Was $110'.
-        Their deal looks better. I need to inflate my Regular Price (artificially) to match their optical value."
-      code_implementation: query_36_discount_depth_alignment
-      code_location: examples/pricing_intelligence_queries.py:402
+        1. Select Count(Matches) / Count(Total_My_Assortment).
+        2. Select Count(Matches) / Count(Total_Competitor_Assortment).
+      model_outcome: |
+        I share 80% of my range with them, but they only share 10% of their range with me. I am a subset of their business. I have no defensive moat.
       code_pattern: |
-        - Multiple ComputedExpr for discount amounts
-        - my_discount_amount = regular - markdown
-        - comp_discount_amount = regular - markdown
-        - optical_discount_gap = comp - my
-        - ArithmeticCondition filter
+        - DerivedTable with exact_matches analysis
+        - Calculates match_count and total_count
+        - Computes overlap percentages
+        - Reveals competitive differentiation
 
-    unmatched_execution:
-      query_name: "The Magic Number Distribution"
+  unmatched_approximation:
+    - query_number: Q25
+      query_name: "The Brand Weighting Fingerprint"
+      function_name: query_25_brand_weighting_fingerprint
       model_logic: |
-        Analyze the decimal endings of all Competitor Prices (.99 vs .97 vs .00).
-      model_insight: |
-        "They use .97 for clearance and .99 for regular items.
-        I will encode this logic into my own pricing engine so customers subconsciously recognize my clearance items."
-      code_implementation: query_37_magic_number_distribution
-      code_location: examples/pricing_intelligence_queries.py:402
+        1. Calculate Share_of_Shelf % per Brand for Me vs. Them.
+        2. (e.g., Me: 40% Sony, Them: 10% Sony).
+      model_outcome: |
+        Even without SKU matches, I can see they are betting on LG while I am betting on Sony. I need to negotiate better terms with Sony because I am their main channel.
       code_pattern: |
-        - Simplified: GROUP BY is_markdown + category
-        - Full version would use MOD(price * 100, 100)
-        - Reveals pricing psychology patterns
-        - AVG price by markdown status
+        - Window function: COUNT OVER (PARTITION BY vendor)
+        - Calculates brand_share_pct per vendor
+        - No joins required
+        - Reveals brand positioning strategy
 
-  concern_B_inflation_and_trends:
-    universal_reasoning: |
-      "Is the market getting more expensive or cheaper?
-      I need to ride the wave, not swim against it."
 
-    matched_execution:
-      query_name: "The Same-Store Inflation Rate"
-      model_logic: |
-        Calculate Sum(Price_Current) for the specific basket of items that existed
-        both Today and 1 Year Ago.
-      model_insight: |
-        "On identical items, the market is up 4% YoY.
-        I can raise my entire catalog by 4% without losing relative competitiveness."
-      code_implementation: query_38_same_store_inflation_rate
-      code_location: examples/pricing_intelligence_queries.py:361
-      code_pattern: |
-        - DerivedTable with LAG(markdown_price, 52 weeks)
-        - PARTITION BY id, ORDER BY updated_at
-        - Outer aggregation: AVG(current) vs AVG(historical)
-        - Groups by category for inflation rate
+concern: Inventory Velocity Inference
+universal_reasoning: |
+  I want to know what they are selling *fast*, so I can copy it. I will infer sales velocity by watching their inventory churn.
 
-    unmatched_execution:
-      query_name: "The Entry-Level Creep"
-      model_logic: |
-        Track the 10th Percentile Price of specific categories over time.
-      model_insight: |
-        "The 'Cheap' tier of Laptops has moved from $200 to $250.
-        I should stop searching for $200 laptops; they don't exist anymore."
-      code_implementation: query_39_entry_level_creep
-      code_location: examples/pricing_intelligence_queries.py:477
-      code_pattern: |
-        - PERCENTILE_DISC(0.10) aggregate
-        - Groups by category
-        - MIN for absolute floor price
-        - Tracks entry-level price evolution
-
-  # DOMAIN 4: TOTAL RECONNAISSANCE
-  concern_A_semantic_clustering_manual_matching:
-    universal_reasoning: |
-      "The database doesn't have matches? I don't care.
-      I will conceptually match them using language patterns."
-
-    matched_execution:
-      query_name: "N/A (Superceded by actual matches)"
-      model_logic: "N/A"
-      model_insight: "N/A"
-      code_implementation: null
-      code_location: null
-      code_pattern: null
-
-    unmatched_execution:
-      query_name: "The Semantic Keyword Scrape"
-      model_logic: |
-        1. Select Title_Raw from Competitor.
-        2. Filter where Title contains ["OLED", "55 Inch", "4K"].
-        3. Exclude ["Refurbished", "Open Box"].
-        4. Calculate Avg(Price).
-      model_insight: |
-        "Even without IDs, I know the market price for a 'Generic 55 OLED' is $900.
-        If my private label version is $1100, it will fail."
-      code_implementation: query_40_semantic_keyword_scrape
-      code_location: examples/pricing_intelligence_queries.py:545
-      code_pattern: |
-        - Multiple ILIKE filters (OLED, 55)
-        - Combined with AND logic
-        - AVG/MIN/MAX/COUNT aggregates
-        - Semantic clustering via text patterns
-
-  concern_B_inventory_velocity_inference:
-    universal_reasoning: |
-      "I want to know what they are selling *fast*, so I can copy it.
-      I will infer sales velocity by watching their inventory churn."
-
-    matched_execution:
+  matched_execution:
+    - query_number: Q29
       query_name: "The High-Velocity Detector"
+      function_name: query_29_inventory_velocity_detector
       model_logic: |
         Identify Matches where Availability toggles (True -> False -> True) frequently.
-      model_insight: |
-        "This item keeps selling out and restocking. It is a high-volume winner.
-        I need to feature this item on my homepage."
-      code_implementation: query_29_inventory_velocity_detector
-      code_location: examples/pricing_intelligence_queries.py:253
+      model_outcome: |
+        This item keeps selling out and restocking. It is a high-volume winner. I need to feature this item on my homepage.
       code_pattern: |
         - WindowExpr: LAG(availability) PARTITION BY id
         - DerivedTable to detect state changes
         - SUM of toggles (availability != previous_availability)
         - Filter for toggle_count > threshold
 
-    unmatched_execution:
+  unmatched_approximation:
+    - query_number: Q41
       query_name: "The 'New Arrival' Survival Rate"
+      function_name: query_41_new_arrival_survival_rate
       model_logic: |
-        1. Identify items labeled "New" 3 months ago.
+        1. Identify items labeled 'New' 3 months ago.
         2. Check if they are still present in the dataset today.
-      model_insight: |
-        "They launched 50 new 'Smart Home' gadgets. Only 10 survived.
-        I will only stock those 10 winners and ignore the 40 failures they tested for me."
-      code_implementation: query_41_new_arrival_survival_rate
-      code_location: examples/pricing_intelligence_queries.py:626
+      model_outcome: |
+        They launched 50 new 'Smart Home' gadgets. Only 10 survived. I will only stock those 10 winners and ignore the 40 failures they tested for me.
       code_pattern: |
         - Filter: availability = TRUE
         - Filter: created_at IS NOT NULL (would need date arithmetic)
@@ -607,66 +535,105 @@ commercial_architect_intelligence_model_mapping:
         - ORDER BY created_at ASC
 
 
+concern: Psychological Anchoring
+universal_reasoning: |
+  How does the customer perceive value? I need to master the gap between the 'Sticker Price' and the 'Real Price'.
+
+  matched_execution:
+    - query_number: Q36
+      query_name: "The Discount Depth Alignment"
+      function_name: query_36_discount_depth_alignment
+      model_logic: |
+        Select Matches where (Competitor_Regular - Competitor_Current) > (My_Regular - My_Current).
+      model_outcome: |
+        We are both at $100. But they say 'Was $150', and I say 'Was $110'. Their deal looks better. I need to inflate my Regular Price (artificially) to match their optical value.
+      code_pattern: |
+        - Multiple ComputedExpr for discount amounts
+        - my_discount_amount = regular - markdown
+        - comp_discount_amount = regular - markdown
+        - optical_discount_gap = comp - my
+        - ArithmeticCondition filter
+
+  unmatched_approximation:
+    - query_number: Q37
+      query_name: "The Magic Number Distribution"
+      function_name: query_37_magic_number_distribution
+      model_logic: |
+        Analyze the decimal endings of all Competitor Prices (.99 vs .97 vs .00).
+      model_outcome: |
+        They use .97 for clearance and .99 for regular items. I will encode this logic into my own pricing engine so customers subconsciously recognize my clearance items.
+      code_pattern: |
+        - Simplified: GROUP BY is_markdown + category
+        - Full version would use MOD(price * 100, 100)
+        - Reveals pricing psychology patterns
+        - AVG price by markdown status
+
+
+concern: Inflation and Trends
+universal_reasoning: |
+  Is the market getting more expensive or cheaper? I need to ride the wave, not swim against it.
+
+  matched_execution:
+    - query_number: Q38
+      query_name: "The Same-Store Inflation Rate"
+      function_name: query_38_same_store_inflation_rate
+      model_logic: |
+        Calculate Sum(Price_Current) for the specific basket of items that existed both Today and 1 Year Ago.
+      model_outcome: |
+        On identical items, the market is up 4% YoY. I can raise my entire catalog by 4% without losing relative competitiveness.
+      code_pattern: |
+        - DerivedTable with LAG(markdown_price, 52 weeks)
+        - PARTITION BY id, ORDER BY updated_at
+        - Outer aggregation: AVG(current) vs AVG(historical)
+        - Groups by category for inflation rate
+
+  unmatched_approximation:
+    - query_number: Q39
+      query_name: "The Entry-Level Creep"
+      function_name: query_39_entry_level_creep
+      model_logic: |
+        Track the 10th Percentile Price of specific categories over time.
+      model_outcome: |
+        The 'Cheap' tier of Laptops has moved from $200 to $250. I should stop searching for $200 laptops; they don't exist anymore.
+      code_pattern: |
+        - PERCENTILE_DISC(0.10) aggregate
+        - Groups by category
+        - MIN for absolute floor price
+        - Tracks entry-level price evolution
+
+
+concern: Semantic Clustering Manual Matching
+universal_reasoning: |
+  The database doesn't have matches? I don't care. I will conceptually match them using language patterns.
+
+  unmatched_approximation:
+    - query_number: Q40
+      query_name: "The Semantic Keyword Scrape"
+      function_name: query_40_semantic_keyword_scrape
+      model_logic: |
+        1. Select Title_Raw from Competitor.
+        2. Filter where Title contains ['OLED', '55 Inch', '4K'].
+        3. Exclude ['Refurbished', 'Open Box'].
+        4. Calculate Avg(Price).
+      model_outcome: |
+        Even without IDs, I know the market price for a 'Generic 55 OLED' is $900. If my private label version is $1100, it will fail.
+      code_pattern: |
+        - Multiple ILIKE filters (OLED, 55)
+        - Combined with AND logic
+        - AVG/MIN/MAX/COUNT aggregates
+        - Semantic clustering via text patterns
+
+
 # =============================================================================
 # COVERAGE SUMMARY
 # =============================================================================
-coverage_summary:
-  total_intelligence_model_queries: 36
+total_queries: 36
+matched_queries: 17
+unmatched_queries: 19
 
-  pricing_analyst_queries: 21
-    enforcer: 6
-    predator: 6
-    historian: 6
-    mercenary: 3
-
-  commercial_architect_queries: 15
-    range_architecture: 4
-    procurement_intelligence: 4
-    pricing_architecture: 4
-    total_reconnaissance: 3
-
-  code_implementations: 36
-    phase1_queries_py: 23  # Q03, Q06, Q08-Q14, Q16-Q23, Q30-Q35
-    phase2_queries_py: 5   # Q15, Q24-Q26, Q36-Q37
-    phase3_queries_py: 8   # Q27-Q29, Q38-Q41
-
-  matched_queries: 18
-  unmatched_queries: 18
-
-  technical_patterns_used:
-    window_functions:
-      - LAG: temporal price comparison, availability tracking, churn detection
-      - STDDEV: price volatility analysis for safe haven identification
-      - COUNT OVER: brand share calculation, offer tracking
-
-    derived_tables: 12
-      - Multi-step aggregations requiring nested queries
-      - Window function results need outer filtering
-      - Percentage and ratio calculations
-
-    arithmetic_conditions: 8
-      - Inline ratio comparisons (price drift > 5%)
-      - Threshold detection without subqueries
-      - Compound filters on calculated values
-
-    column_comparisons: 7
-      - Cross-table column relationships
-      - Availability state matching
-      - Price ordering without literals
-
-    percentile_functions: 2
-      - PERCENTILE_DISC(0.10) for entry-level floor tracking
-
-    case_expressions: 2
-      - Price bucketing into tiers
-      - Category classification
-
-# =============================================================================
-# IMPLEMENTATION STATUS: 100% COMPLETE
-# =============================================================================
-# All 36 queries from both intelligence models are implemented with:
-# - Runnable code in examples/phase{1,2,3}_queries.py
-# - Passing tests (101 tests total)
-# - SQL translation verified
-# - Intelligence model alignment documented
-# =============================================================================
+by_archetype:
+  ENFORCER: 6
+  PREDATOR: 6
+  HISTORIAN: 6
+  MERCENARY: 3
+  ARCHITECT: 15

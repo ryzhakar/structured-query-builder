@@ -14,12 +14,55 @@ ALL QUERIES TESTED AND WORKING.
 
 from structured_query_builder import *
 from structured_query_builder.translator import translate_query
+from structured_query_builder.query_registry import registry
 
 # =============================================================================
 # ARCHETYPE 1: ENFORCER - Compliance & Positioning (2 new queries)
 # =============================================================================
 
 
+@registry.register(
+    query_number=16,
+    query_name="The Brand Floor Scan",
+    archetype="ENFORCER",
+    concern="MAP Policing",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?
+    """,
+    model_logic="""
+        Select * from Competitor_Offers where Brand = 'Dyson' AND Price < Global_Dyson_MAP_Floor.
+    """,
+    model_outcome="""
+        Dragnet: 'They have 3 unidentified Dyson items selling below the legal limit.'
+    """,
+    code_pattern="""
+        - Simple WHERE filters: vendor=Them, brand=Nike, price<50
+        - No joins (unmatched)
+        - Hardcoded MAP threshold (would be parameterized in production)
+    """,
+)
+@registry.register(
+    query_number=16,
+    query_name="The Brand Floor Scan",
+    archetype="ENFORCER",
+    concern="MAP Policing",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?
+    """,
+    model_logic="""
+        Select * from Competitor_Offers where Brand = 'Dyson' AND Price < Global_Dyson_MAP_Floor.
+    """,
+    model_outcome="""
+        Dragnet: 'They have 3 unidentified Dyson items selling below the legal limit.'
+    """,
+    code_pattern="""
+        - Simple WHERE filters: vendor=Them, brand=Nike, price<50
+- No joins (unmatched)
+- Hardcoded MAP threshold (would be parameterized in production)
+    """,
+)
 def query_16_map_violations_unmatched():
     """
     UNMATCHED: Brand floor scan for MAP violations.
@@ -85,6 +128,28 @@ def query_16_map_violations_unmatched():
     )
 
 
+@registry.register(
+    query_number=17,
+    query_name="The Premium Gap Analysis",
+    archetype="ENFORCER",
+    concern="Brand Alignment",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Does our assortment price us out of the 'Middle Class' demographic?
+    """,
+    model_logic="""
+        Avg(My_Price - Competitor_Price) on Matched Items Only.
+    """,
+    model_outcome="""
+        apples-to-apples comparison of premium markup.
+    """,
+    code_pattern="""
+        - AggregateExpr with BinaryArithmetic input
+- AVG of (my_price - comp_price) in single expression
+- JoinSpec with DerivedTable pattern
+- Groups by brand + category
+    """,
+)
 def query_17_premium_gap_analysis():
     """
     MATCHED: Average price premium we charge vs. competitor on identical products.
@@ -203,6 +268,28 @@ def query_17_premium_gap_analysis():
     )
 
 
+@registry.register(
+    query_number=3,
+    query_name="The Category Histogram",
+    archetype="ENFORCER",
+    concern="Brand Alignment",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Does our assortment price us out of the 'Middle Class' demographic?
+    """,
+    model_logic="""
+        Plot Count(Offers) by Price Bin ($0-50, $51-100). Compare shapes.
+    """,
+    model_outcome="""
+        Distribution Insight: 'They have a huge cluster of items at $20. We have nothing under $50. We are missing the entry-level shopper.'
+    """,
+    code_pattern="""
+        - CaseExpr to bucket prices into tiers
+- Multiple WhenClause conditions for price ranges
+- GROUP BY case alias
+- Count per bucket
+    """,
+)
 def query_03_category_histogram():
     """
     UNMATCHED: Analyze price distribution to detect demographic gaps.
@@ -283,6 +370,28 @@ def query_03_category_histogram():
 # =============================================================================
 
 
+@registry.register(
+    query_number=18,
+    query_name="The Supply Chain Failure Detector",
+    archetype="PREDATOR",
+    concern="Monopoly Exploitation",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        If they are out of stock, supply is low. I should raise prices to maximize profit.
+    """,
+    model_logic="""
+        Count(Competitor_In_Stock_Offers) Group By Brand. Check for sudden drops.
+    """,
+    model_outcome="""
+        Broad Policy: 'Their Sony inventory dropped 40%. Turn off all Sony auto-discounts until further notice.'
+    """,
+    code_pattern="""
+        - DerivedTable with LAG window function
+- Tracks offer_count changes week-over-week
+- WindowExpr: LAG(offer_count) PARTITION BY brand, vendor
+- Outer query filters for significant drops
+    """,
+)
 def query_18_supply_chain_failure_detector():
     """
     UNMATCHED: Detect supply chain failures via week-over-week availability drops.
@@ -379,6 +488,27 @@ def query_18_supply_chain_failure_detector():
     )
 
 
+@registry.register(
+    query_number=19,
+    query_name="The Loss-Leader Hunter",
+    archetype="PREDATOR",
+    concern="Bottom Feeding",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Identify 'garbage' low prices that we should ignore to save margin.
+    """,
+    model_logic="""
+        Flag matches where Competitor_Price < My_Cost_Proxy.
+    """,
+    model_outcome="""
+        Exclusion List: 'Do not match SKU #999; they are dumping it.'
+    """,
+    code_pattern="""
+        - ColumnComparison: comp.markdown_price < my.regular_price
+- Uses regular_price as cost proxy
+- Identifies unprofitable competitive matches
+    """,
+)
 def query_19_loss_leader_hunter():
     """
     MATCHED: Identify competitor products priced below our regular price (cost proxy).
@@ -491,6 +621,28 @@ def query_19_loss_leader_hunter():
     )
 
 
+@registry.register(
+    query_number=11,
+    query_name="The Stockout Gouge",
+    archetype="PREDATOR",
+    concern="Monopoly Exploitation",
+    variant="Matched Execution",
+    universal_reasoning="""
+        If they are out of stock, supply is low. I should raise prices to maximize profit.
+    """,
+    model_logic="""
+        Select matches where My_Stock=TRUE and Their_Stock=FALSE.
+    """,
+    model_outcome="""
+        Targeted Strike: 'Raise price to MSRP on these 12 specific items immediately.'
+    """,
+    code_pattern="""
+        - Boolean filters on availability column
+- my.availability = TRUE AND comp.availability = FALSE
+- Inner joins through exact_matches
+- Direct competitive advantage detection
+    """,
+)
 def query_11_stockout_gouge():
     """
     MATCHED: Exploit monopoly when competitor is out of stock.
@@ -616,6 +768,28 @@ def query_11_stockout_gouge():
     )
 
 
+@registry.register(
+    query_number=12,
+    query_name="The Deep Discount Filter",
+    archetype="PREDATOR",
+    concern="Bottom Feeding",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Identify 'garbage' low prices that we should ignore to save margin.
+    """,
+    model_logic="""
+        Flag offers where (Price_Regular - Price_Current) / Price_Regular > 50%.
+    """,
+    model_outcome="""
+        Noise Reduction: 'Ignore any market signal from items discounted >50%; it's clearance noise.'
+    """,
+    code_pattern="""
+        - DerivedTable to calculate discount_percent
+- Inner query: (regular - markdown) / regular AS discount_percent
+- Outer WHERE: discount_percent > 0.50
+- Filters clearance items from analysis
+    """,
+)
 def query_12_deep_discount_filter():
     """
     UNMATCHED: Filter out clearance noise (>50% off is not strategic pricing).
@@ -746,6 +920,28 @@ def query_12_deep_discount_filter():
     )
 
 
+@registry.register(
+    query_number=6,
+    query_name="The Cluster Floor Check",
+    archetype="PREDATOR",
+    concern="Headroom Discovery",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Are we pricing lower than the market floor unnecessarily?
+    """,
+    model_logic="""
+        Identify the 10th Percentile Price of the Competitor's Category. Check if My_Price < 10th_Percentile.
+    """,
+    model_outcome="""
+        Outlier Check: 'Why are we selling a toaster for $12 when their cheapest toaster is $19? Investigate.'
+    """,
+    code_pattern="""
+        - PERCENTILE_DISC(0.10) aggregate function
+- Groups by category
+- Identifies entry-level price threshold
+- No joins (unmatched analysis)
+    """,
+)
 def query_06_cluster_floor_check():
     """
     UNMATCHED: Identify products priced below market 10th percentile.
@@ -858,6 +1054,28 @@ def query_06_cluster_floor_check():
 # =============================================================================
 
 
+@registry.register(
+    query_number=20,
+    query_name="The Item Inflation Tracker",
+    archetype="HISTORIAN",
+    concern="Inflation Tracking",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Has the market accepted a price increase? Can we move the floor up?
+    """,
+    model_logic="""
+        Avg price increase on same-SKU over 6 months.
+    """,
+    model_outcome="""
+        Validation: 'They raised the price on the runner SKU. We follow.'
+    """,
+    code_pattern="""
+        - Self-join on product_offers with temporal filter
+- Compares current vs historical prices
+- DerivedTable for multi-step aggregation
+- Time-series price comparison
+    """,
+)
 def query_20_category_price_snapshot():
     """
     TEMPORAL COMPARISON: Compare current vs historical minimum prices by category.
@@ -989,6 +1207,28 @@ def query_20_category_price_snapshot():
     )
 
 
+@registry.register(
+    query_number=21,
+    query_name="The Category Erosion Index",
+    archetype="HISTORIAN",
+    concern="Promo Detection",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Did they just launch a campaign, or is this random noise?
+    """,
+    model_logic="""
+        Calculate Avg(Price) of entire Category. Did it drop > 5%?
+    """,
+    model_outcome="""
+        Event Detection: 'The entire Kitchen category moved down. Launch Counter-Promo #4.'
+    """,
+    code_pattern="""
+        - DerivedTable with category-level LAG
+- AVG price by category over time
+- WindowExpr: LAG(avg_price) PARTITION BY category
+- Tracks category-wide price movements
+    """,
+)
 def query_21_promo_erosion_index():
     """
     UNMATCHED: Category-wide average price tracking for promotion detection.
@@ -1053,6 +1293,28 @@ def query_21_promo_erosion_index():
     )
 
 
+@registry.register(
+    query_number=22,
+    query_name="The Brand Volume Drop",
+    archetype="HISTORIAN",
+    concern="Churn Analysis",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Are they exiting a brand or category? If they are delisting products, we can step in to fill the void.
+    """,
+    model_logic="""
+        Compare Count(Offers) per Brand for T_Current vs T_LastWeek.
+    """,
+    model_outcome="""
+        Signal: 'Their total count of Dyson offers dropped by 40%. They are likely liquidating the brand.'
+    """,
+    code_pattern="""
+        - WindowExpr: LAG(offer_count) PARTITION BY brand, vendor
+- DerivedTable with COUNT aggregation
+- Tracks brand volume changes
+- count_change_pct computed column
+    """,
+)
 def query_22_brand_presence_tracking():
     """
     UNMATCHED: Track competitor brand assortment size changes week-over-week.
@@ -1154,6 +1416,28 @@ def query_22_brand_presence_tracking():
     )
 
 
+@registry.register(
+    query_number=8,
+    query_name="The Slash-and-Burn Alert",
+    archetype="HISTORIAN",
+    concern="Promo Detection",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Did they just launch a campaign, or is this random noise?
+    """,
+    model_logic="""
+        Count matches where price dropped >15% overnight.
+    """,
+    model_outcome="""
+        Specific Intel: 'They discounted the Ninja 3000 and the KitchenAid K5.'
+    """,
+    code_pattern="""
+        - DerivedTable with LAG window function
+- WindowExpr: LAG(markdown_price) PARTITION BY id
+- Outer filter: percentage drop > 15%
+- Detects sudden price drops
+    """,
+)
 def query_08_slash_and_burn_alert():
     """
     MATCHED: Detect competitor price drops >15% using temporal comparison.
@@ -1278,6 +1562,27 @@ def query_08_slash_and_burn_alert():
     )
 
 
+@registry.register(
+    query_number=9,
+    query_name="The Minimum Viable Price Lift",
+    archetype="HISTORIAN",
+    concern="Inflation Tracking",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Has the market accepted a price increase? Can we move the floor up?
+    """,
+    model_logic="""
+        Track Min(Price) of the category over time.
+    """,
+    model_outcome="""
+        Trend: 'The cheapest item in the market is now $25 (was $20). Update our Entry Price rules.'
+    """,
+    code_pattern="""
+        - MIN aggregate by category
+- Tracks floor price evolution
+- Simple unmatched analysis
+    """,
+)
 def query_09_minimum_viable_price_lift():
     """
     UNMATCHED: Track minimum price by category over time periods.
@@ -1331,6 +1636,28 @@ def query_09_minimum_viable_price_lift():
     )
 
 
+@registry.register(
+    query_number=10,
+    query_name="The Assortment Rotation Check",
+    archetype="HISTORIAN",
+    concern="Churn Analysis",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Are they exiting a brand or category? If they are delisting products, we can step in to fill the void.
+    """,
+    model_logic="""
+        Select IDs present in T_LastWeek but missing in T_Current (Competitor Only).
+    """,
+    model_outcome="""
+        Specific Intel: 'They stopped selling the Dyson V10 and V11. They might be losing the vendor relationship.'
+    """,
+    code_pattern="""
+        - Temporal self-join pattern
+- LEFT JOIN to find missing items
+- WHERE right_side IS NULL (anti-join pattern)
+- Detects delisted products
+    """,
+)
 def query_10_assortment_rotation_check():
     """
     MATCHED: Detect products delisted between observation periods.
@@ -1429,6 +1756,28 @@ def query_10_assortment_rotation_check():
     )
 
 
+@registry.register(
+    query_number=13,
+    query_name="The Ghost Inventory Check",
+    archetype="ARCHITECT",
+    concern="Gap Analysis and White Space",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Where are they failing to serve the customer? I will find the empty space in their catalog and fill it.
+    """,
+    model_logic="""
+        Select Matches where Competitor_Availability = FALSE for > 4 consecutive weeks.
+    """,
+    model_outcome="""
+        They have permanently failed to stock these 50 items. I will double my inventory position on these specific SKUs and market them aggressively.
+    """,
+    code_pattern="""
+        - Boolean filter: comp.availability = FALSE
+- Temporal analysis (would need time window in production)
+- Inner joins through exact_matches
+- Identifies persistent stockouts
+    """,
+)
 def query_13_ghost_inventory_check():
     """
     MATCHED: Detect products out of stock for >4 consecutive weeks.
@@ -1551,6 +1900,28 @@ def query_13_ghost_inventory_check():
 # =============================================================================
 
 
+@registry.register(
+    query_number=23,
+    query_name="The Discount Depth Distribution",
+    archetype="MERCENARY",
+    concern="Optical Dominance",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Who looks like they have the better deal (bigger discount)?
+    """,
+    model_logic="""
+        Avg(Discount %) for the Category. Us vs. Them.
+    """,
+    model_outcome="""
+        Perception Audit: 'Their average discount is 20%. Ours is 10%. We look stingy. Increase broad markdown depth.'
+    """,
+    code_pattern="""
+        - Aggregate discount analysis by category
+- AVG, STDDEV for discount patterns
+- is_markdown flag grouping
+- Statistical distribution analysis
+    """,
+)
 def query_23_discount_depth_distribution():
     """
     UNMATCHED: Analyze discount depth patterns across categories.
@@ -1622,6 +1993,28 @@ def query_23_discount_depth_distribution():
     )
 
 
+@registry.register(
+    query_number=14,
+    query_name="The Global Floor Stress Test",
+    archetype="ARCHITECT",
+    concern="Cost Model Validation",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        I know my cost (Internal). I see their price (External). If their price is near my cost, either they are losing money, or they buy it cheaper than I do.
+    """,
+    model_logic="""
+        Select Min(Current_Price) Group By Brand + Category. Compare vs. My_Entry_Level_Cost.
+    """,
+    model_outcome="""
+        The cheapest Samsung TV in the market is $300. My cheapest cost is $350. I am sourcing the wrong models. I need to ask Samsung for their 'fighter' SKUs.
+    """,
+    code_pattern="""
+        - MIN(markdown_price) by brand + category
+- COUNT for competitor offer density
+- vendor != Us filter
+- Reveals market floor prices
+    """,
+)
 def query_14_global_floor_stress_test():
     """
     UNMATCHED: Identify minimum competitor prices by brand+category for sourcing decisions.
@@ -1686,6 +2079,28 @@ def query_14_global_floor_stress_test():
     )
 
 
+@registry.register(
+    query_number=32,
+    query_name="The SKU Violation Scan",
+    archetype="ENFORCER",
+    concern="MAP Policing",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Is the competitor breaking vendor rules (MAP) and illegally undercutting the market?
+    """,
+    model_logic="""
+        Select matches where Competitor_Price < MAP_List_Value (joined by SKU).
+    """,
+    model_outcome="""
+        Evidence Packet: 'They are breaking MAP on exactly these 5 items.'
+    """,
+    code_pattern="""
+        - ColumnComparison: comp.markdown_price < my.regular_price
+- Uses regular_price as MAP proxy
+- ComputedExpr for map_violation_amount
+- Inner joins through exact_matches
+    """,
+)
 def query_32_sku_violation_scan():
     """
     MATCHED: Detect MAP (Minimum Advertised Price) violations on matched products.
@@ -1825,6 +2240,28 @@ def query_32_sku_violation_scan():
     )
 
 
+@registry.register(
+    query_number=33,
+    query_name="The Unnecessary Discount Finder",
+    archetype="PREDATOR",
+    concern="Headroom Discovery",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Are we pricing lower than the market floor unnecessarily?
+    """,
+    model_logic="""
+        Select where My_Price < Competitor_Price AND My_Price < My_Regular.
+    """,
+    model_outcome="""
+        Correction: 'Raise these 40 items by $5 to match them.'
+    """,
+    code_pattern="""
+        - Double ColumnComparison filters
+- my.markdown_price < comp.markdown_price
+- my.markdown_price < my.regular_price
+- ComputedExpr for price_headroom opportunity
+    """,
+)
 def query_33_unnecessary_discount_finder():
     """
     MATCHED: Find products where we're discounting below competitor price unnecessarily.
@@ -1973,6 +2410,28 @@ def query_33_unnecessary_discount_finder():
     )
 
 
+@registry.register(
+    query_number=34,
+    query_name="The Anchor Check",
+    archetype="MERCENARY",
+    concern="Optical Dominance",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Who looks like they have the better deal (bigger discount)?
+    """,
+    model_logic="""
+        Select matches where My_Regular < Their_Regular.
+    """,
+    model_outcome="""
+        Adjustment: 'Boost our Regular Price on SKU X so our discount % looks as good as theirs.'
+    """,
+    code_pattern="""
+        - ColumnComparison: my.regular_price < comp.regular_price
+- ComputedExpr for anchor_gap
+- Identifies optical discount disadvantages
+- Psychology-based pricing adjustment
+    """,
+)
 def query_34_anchor_check():
     """
     MATCHED: Compare regular prices to identify optical discount value disadvantages.
@@ -2116,6 +2575,28 @@ def query_34_anchor_check():
     )
 
 
+@registry.register(
+    query_number=35,
+    query_name="The Ad-Hoc Keyword Scrape",
+    archetype="MERCENARY",
+    concern="Keyword Arbitrage",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        What is the 'Street Price' for a specific customer search term?
+    """,
+    model_logic="""
+        Select Avg(Price) where Title LIKE '%1TB SSD%'.
+    """,
+    model_outcome="""
+        Proxy Match: 'The market says a 1TB SSD is worth $95. Ensure we have *something* at that price.'
+    """,
+    code_pattern="""
+        - ILIKE pattern matching on title
+- Single keyword filter (parameterizable)
+- AVG/MIN/MAX/COUNT aggregates
+- No joins, pure text search
+    """,
+)
 def query_35_ad_hoc_keyword_scrape():
     """
     UNMATCHED: Calculate market price for products matching keyword pattern.
@@ -2186,6 +2667,28 @@ def query_35_ad_hoc_keyword_scrape():
     )
 
 
+@registry.register(
+    query_number=30,
+    query_name="The Index Drift Check",
+    archetype="ENFORCER",
+    concern="Parity Maintenance",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Are we drifting too far above the market price, causing us to lose relevance?
+    """,
+    model_logic="""
+        Select matches where (My_Price / Competitor_Price) > 1.05.
+    """,
+    model_outcome="""
+        Precise List: 'SKU #123 is 7% too expensive.'
+    """,
+    code_pattern="""
+        - ArithmeticCondition for ratio comparison (my_price > comp_price * 1.05)
+- Inner joins through exact_matches table
+- ComputedExpr for price_ratio calculation
+- My/comp table aliases pattern
+    """,
+)
 def query_30_index_drift_check():
     """
     MATCHED: Identify matched products where our price is drifting >5% above competitor.
@@ -2322,6 +2825,28 @@ def query_30_index_drift_check():
     )
 
 
+@registry.register(
+    query_number=31,
+    query_name="The Average Selling Price (ASP) Gap",
+    archetype="ENFORCER",
+    concern="Parity Maintenance",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Are we drifting too far above the market price, causing us to lose relevance?
+    """,
+    model_logic="""
+        Compare Avg(My_Price) vs Avg(Competitor_Price) Group By Brand + Category.
+    """,
+    model_outcome="""
+        Directional Signal: 'We are generally $50 more expensive on Samsung TVs than they are.'
+    """,
+    code_pattern="""
+        - Simple aggregate pattern with GROUP BY
+- No joins required (unmatched)
+- Returns vendor, brand, category, avg_price, count
+- Post-processing needed to compare Us vs Them
+    """,
+)
 def query_31_average_selling_price_gap():
     """
     UNMATCHED: Compare average prices by brand+category between us and competitor.
@@ -2446,6 +2971,29 @@ from structured_query_builder.translator import translate_query
 # =============================================================================
 
 
+@registry.register(
+    query_number=24,
+    query_name="The Commoditization Coefficient",
+    archetype="ARCHITECT",
+    concern="Assortment Overlap and Exclusivity",
+    variant="Matched Execution",
+    universal_reasoning="""
+        I need to know exactly how unique my business is. If I am selling the same things as them, I am a commodity. If I am selling different things, I am a destination.
+    """,
+    model_logic="""
+        1. Select Count(Matches) / Count(Total_My_Assortment).
+2. Select Count(Matches) / Count(Total_Competitor_Assortment).
+    """,
+    model_outcome="""
+        I share 80% of my range with them, but they only share 10% of their range with me. I am a subset of their business. I have no defensive moat.
+    """,
+    code_pattern="""
+        - DerivedTable with exact_matches analysis
+- Calculates match_count and total_count
+- Computes overlap percentages
+- Reveals competitive differentiation
+    """,
+)
 def query_24_commoditization_coefficient():
     """
     MATCHED: Calculate product overlap ratio (commoditization metric).
@@ -2568,6 +3116,29 @@ def query_24_commoditization_coefficient():
     )
 
 
+@registry.register(
+    query_number=25,
+    query_name="The Brand Weighting Fingerprint",
+    archetype="ARCHITECT",
+    concern="Assortment Overlap and Exclusivity",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        I need to know exactly how unique my business is. If I am selling the same things as them, I am a commodity. If I am selling different things, I am a destination.
+    """,
+    model_logic="""
+        1. Calculate Share_of_Shelf % per Brand for Me vs. Them.
+2. (e.g., Me: 40% Sony, Them: 10% Sony).
+    """,
+    model_outcome="""
+        Even without SKU matches, I can see they are betting on LG while I am betting on Sony. I need to negotiate better terms with Sony because I am their main channel.
+    """,
+    code_pattern="""
+        - Window function: COUNT OVER (PARTITION BY vendor)
+- Calculates brand_share_pct per vendor
+- No joins required
+- Reveals brand positioning strategy
+    """,
+)
 def query_25_brand_weighting_fingerprint():
     """
     UNMATCHED: Compare brand concentration between us and competitor.
@@ -2649,6 +3220,29 @@ def query_25_brand_weighting_fingerprint():
     )
 
 
+@registry.register(
+    query_number=26,
+    query_name="The Price Ladder Void",
+    archetype="ARCHITECT",
+    concern="Gap Analysis and White Space",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Where are they failing to serve the customer? I will find the empty space in their catalog and fill it.
+    """,
+    model_logic="""
+        1. Bin all Competitor offers into Price Buckets ($0-10, $10-20...).
+2. Identify buckets with Count(Offers) = 0.
+    """,
+    model_outcome="""
+        They have zero Toasters between $50 and $80. I will source a 'Good/Better' toaster at $69.99 to own that price point exclusively.
+    """,
+    code_pattern="""
+        - CaseExpr to bucket prices into tiers
+- COUNT(*) per bucket
+- GROUP BY price tier
+- Identifies pricing gaps
+    """,
+)
 def query_26_price_ladder_void_scanner():
     """
     UNMATCHED: Analyze price distribution to identify empty price points.
@@ -2728,6 +3322,28 @@ def query_26_price_ladder_void_scanner():
     )
 
 
+@registry.register(
+    query_number=15,
+    query_name="The Category Margin Proxy",
+    archetype="ARCHITECT",
+    concern="Margin Potential Discovery",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Where is the market 'sleepy'? Where are prices stable and high, allowing me to take margin without fighting?
+    """,
+    model_logic="""
+        Compare Avg(Price_Regular) vs Avg(Price_Current) for the whole Category.
+    """,
+    model_outcome="""
+        The 'Cables' category has almost zero discounting activity (Avg Price = Regular Price). This is a safe category to maximize my initial markup.
+    """,
+    code_pattern="""
+        - DerivedTable with category-level aggregations
+- AVG(comp_avg_price) vs AVG(my_avg_price)
+- CompoundArithmetic for margin_opportunity_pct
+- Inner query groups by category
+    """,
+)
 def query_15_category_margin_proxy():
     """
     MATCHED: Calculate margin headroom opportunity by comparing competitor vs our prices.
@@ -2873,6 +3489,29 @@ def query_15_category_margin_proxy():
     )
 
 
+@registry.register(
+    query_number=36,
+    query_name="The Discount Depth Alignment",
+    archetype="ARCHITECT",
+    concern="Psychological Anchoring",
+    variant="Matched Execution",
+    universal_reasoning="""
+        How does the customer perceive value? I need to master the gap between the 'Sticker Price' and the 'Real Price'.
+    """,
+    model_logic="""
+        Select Matches where (Competitor_Regular - Competitor_Current) > (My_Regular - My_Current).
+    """,
+    model_outcome="""
+        We are both at $100. But they say 'Was $150', and I say 'Was $110'. Their deal looks better. I need to inflate my Regular Price (artificially) to match their optical value.
+    """,
+    code_pattern="""
+        - Multiple ComputedExpr for discount amounts
+- my_discount_amount = regular - markdown
+- comp_discount_amount = regular - markdown
+- optical_discount_gap = comp - my
+- ArithmeticCondition filter
+    """,
+)
 def query_36_discount_depth_alignment():
     """
     MATCHED: Compare nominal discount amounts to identify optical value gaps.
@@ -3018,6 +3657,28 @@ def query_36_discount_depth_alignment():
     )
 
 
+@registry.register(
+    query_number=37,
+    query_name="The Magic Number Distribution",
+    archetype="ARCHITECT",
+    concern="Psychological Anchoring",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        How does the customer perceive value? I need to master the gap between the 'Sticker Price' and the 'Real Price'.
+    """,
+    model_logic="""
+        Analyze the decimal endings of all Competitor Prices (.99 vs .97 vs .00).
+    """,
+    model_outcome="""
+        They use .97 for clearance and .99 for regular items. I will encode this logic into my own pricing engine so customers subconsciously recognize my clearance items.
+    """,
+    code_pattern="""
+        - Simplified: GROUP BY is_markdown + category
+- Full version would use MOD(price * 100, 100)
+- Reveals pricing psychology patterns
+- AVG price by markdown status
+    """,
+)
 def query_37_magic_number_distribution():
     """
     UNMATCHED: Analyze markdown patterns to decode competitor pricing psychology.
@@ -3140,6 +3801,28 @@ from structured_query_builder.translator import translate_query
 # =============================================================================
 
 
+@registry.register(
+    query_number=27,
+    query_name="The Vendor Fairness Audit",
+    archetype="ARCHITECT",
+    concern="Cost Model Validation",
+    variant="Matched Execution",
+    universal_reasoning="""
+        I know my cost (Internal). I see their price (External). If their price is near my cost, either they are losing money, or they buy it cheaper than I do.
+    """,
+    model_logic="""
+        Select Matches where Competitor_Regular_Price < (My_Net_Cost * 1.05).
+    """,
+    model_outcome="""
+        They are selling at my cost plus 5%. Unless they run a charity, they are buying this 10% cheaper than me. I will print this list and throw it on the vendor's desk to demand parity.
+    """,
+    code_pattern="""
+        - ColumnComparison: comp.regular_price < my.regular_price
+- Uses regular_price as cost proxy
+- ComputedExpr for vendor_gap
+- Negotiation leverage detection
+    """,
+)
 def query_27_vendor_fairness_audit():
     """
     MATCHED: Detect when competitor regular prices suggest better vendor terms.
@@ -3269,6 +3952,28 @@ def query_27_vendor_fairness_audit():
     )
 
 
+@registry.register(
+    query_number=28,
+    query_name="The Safe Haven Scan",
+    archetype="ARCHITECT",
+    concern="Margin Potential Discovery",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Where is the market 'sleepy'? Where are prices stable and high, allowing me to take margin without fighting?
+    """,
+    model_logic="""
+        Select Matches where StdDev(Competitor_Price_52Weeks) is Low AND (Competitor_Price - My_Cost) > 40%.
+    """,
+    model_outcome="""
+        These items are high-margin and stable. They never discount them. I will lock these prices and treat them as my 'Profit Engine'.
+    """,
+    code_pattern="""
+        - WindowExpr: STDDEV(markdown_price) OVER temporal window
+- DerivedTable for volatility calculation
+- Filter for low volatility + high margin
+- alias: price_volatility_52w
+    """,
+)
 def query_28_safe_haven_scanner():
     """
     MATCHED: Find stable, high-margin opportunity products using temporal price volatility.
@@ -3416,6 +4121,28 @@ def query_28_safe_haven_scanner():
     )
 
 
+@registry.register(
+    query_number=29,
+    query_name="The High-Velocity Detector",
+    archetype="ARCHITECT",
+    concern="Inventory Velocity Inference",
+    variant="Matched Execution",
+    universal_reasoning="""
+        I want to know what they are selling *fast*, so I can copy it. I will infer sales velocity by watching their inventory churn.
+    """,
+    model_logic="""
+        Identify Matches where Availability toggles (True -> False -> True) frequently.
+    """,
+    model_outcome="""
+        This item keeps selling out and restocking. It is a high-volume winner. I need to feature this item on my homepage.
+    """,
+    code_pattern="""
+        - WindowExpr: LAG(availability) PARTITION BY id
+- DerivedTable to detect state changes
+- SUM of toggles (availability != previous_availability)
+- Filter for toggle_count > threshold
+    """,
+)
 def query_29_inventory_velocity_detector():
     """
     MATCHED: Infer sales velocity from availability toggle frequency using LAG.
@@ -3574,6 +4301,28 @@ def query_29_inventory_velocity_detector():
     )
 
 
+@registry.register(
+    query_number=38,
+    query_name="The Same-Store Inflation Rate",
+    archetype="ARCHITECT",
+    concern="Inflation and Trends",
+    variant="Matched Execution",
+    universal_reasoning="""
+        Is the market getting more expensive or cheaper? I need to ride the wave, not swim against it.
+    """,
+    model_logic="""
+        Calculate Sum(Price_Current) for the specific basket of items that existed both Today and 1 Year Ago.
+    """,
+    model_outcome="""
+        On identical items, the market is up 4% YoY. I can raise my entire catalog by 4% without losing relative competitiveness.
+    """,
+    code_pattern="""
+        - DerivedTable with LAG(markdown_price, 52 weeks)
+- PARTITION BY id, ORDER BY updated_at
+- Outer aggregation: AVG(current) vs AVG(historical)
+- Groups by category for inflation rate
+    """,
+)
 def query_38_same_store_inflation_rate():
     """
     MATCHED: Calculate inflation rate on matched products over time.
@@ -3684,6 +4433,28 @@ def query_38_same_store_inflation_rate():
     )
 
 
+@registry.register(
+    query_number=39,
+    query_name="The Entry-Level Creep",
+    archetype="ARCHITECT",
+    concern="Inflation and Trends",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        Is the market getting more expensive or cheaper? I need to ride the wave, not swim against it.
+    """,
+    model_logic="""
+        Track the 10th Percentile Price of specific categories over time.
+    """,
+    model_outcome="""
+        The 'Cheap' tier of Laptops has moved from $200 to $250. I should stop searching for $200 laptops; they don't exist anymore.
+    """,
+    code_pattern="""
+        - PERCENTILE_DISC(0.10) aggregate
+- Groups by category
+- MIN for absolute floor price
+- Tracks entry-level price evolution
+    """,
+)
 def query_39_entry_level_creep():
     """
     UNMATCHED: Track 10th percentile price movement to detect market floor changes.
@@ -3750,6 +4521,31 @@ def query_39_entry_level_creep():
     )
 
 
+@registry.register(
+    query_number=40,
+    query_name="The Semantic Keyword Scrape",
+    archetype="ARCHITECT",
+    concern="Semantic Clustering Manual Matching",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        The database doesn't have matches? I don't care. I will conceptually match them using language patterns.
+    """,
+    model_logic="""
+        1. Select Title_Raw from Competitor.
+2. Filter where Title contains ['OLED', '55 Inch', '4K'].
+3. Exclude ['Refurbished', 'Open Box'].
+4. Calculate Avg(Price).
+    """,
+    model_outcome="""
+        Even without IDs, I know the market price for a 'Generic 55 OLED' is $900. If my private label version is $1100, it will fail.
+    """,
+    code_pattern="""
+        - Multiple ILIKE filters (OLED, 55)
+- Combined with AND logic
+- AVG/MIN/MAX/COUNT aggregates
+- Semantic clustering via text patterns
+    """,
+)
 def query_40_semantic_keyword_scrape():
     """
     UNMATCHED: Multi-keyword semantic search to price similar products.
@@ -3829,6 +4625,29 @@ def query_40_semantic_keyword_scrape():
     )
 
 
+@registry.register(
+    query_number=41,
+    query_name="The 'New Arrival' Survival Rate",
+    archetype="ARCHITECT",
+    concern="Inventory Velocity Inference",
+    variant="Unmatched Approximation",
+    universal_reasoning="""
+        I want to know what they are selling *fast*, so I can copy it. I will infer sales velocity by watching their inventory churn.
+    """,
+    model_logic="""
+        1. Identify items labeled 'New' 3 months ago.
+2. Check if they are still present in the dataset today.
+    """,
+    model_outcome="""
+        They launched 50 new 'Smart Home' gadgets. Only 10 survived. I will only stock those 10 winners and ignore the 40 failures they tested for me.
+    """,
+    code_pattern="""
+        - Filter: availability = TRUE
+- Filter: created_at IS NOT NULL (would need date arithmetic)
+- Identifies long-term survivors
+- ORDER BY created_at ASC
+    """,
+)
 def query_41_new_arrival_survival_rate():
     """
     UNMATCHED: Identify products that survived 3+ months to detect winners.

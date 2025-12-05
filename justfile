@@ -99,6 +99,14 @@ install:
     @. .venv/bin/activate && pip install -e .
     @echo "✅ Dependencies installed"
 
+# Generate canonical YAML from query registry
+generate-yaml:
+    @echo "================================"
+    @echo "Generating Query Mapping YAML"
+    @echo "================================"
+    @. .venv/bin/activate && python -c "from examples.pricing_intelligence_queries import registry; yaml = registry.export_to_yaml(); open('intelligence_models/query_implementation_mapping.yaml', 'w').write(yaml); print('✅ Generated intelligence_models/query_implementation_mapping.yaml')"
+    @echo "\nYAML file generated from query registry decorators"
+
 # Show help
 help:
     @echo "Structured Query Builder - Justfile Commands"
@@ -117,6 +125,7 @@ help:
     @echo "  just clean             - Remove generated files"
     @echo "  just stats             - Show project statistics"
     @echo "  just install           - Install dependencies"
+    @echo "  just generate-yaml     - Generate canonical YAML from query registry"
     @echo ""
     @echo "  just all               - Run everything"
     @echo "  just help              - Show this help"
